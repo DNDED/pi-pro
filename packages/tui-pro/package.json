@@ -8,11 +8,14 @@
     ".": "./dist/theme.js",
     "./components/*": "./dist/components/*.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "ink": "^5.0.1",

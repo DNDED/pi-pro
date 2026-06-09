@@ -8,11 +8,14 @@
     ".": "./dist/index.js",
     "./policy": "./dist/policy.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
