@@ -12,22 +12,33 @@ export interface TaskRunnerDeps {
   worktree: WorktreeStore;
 }
 
+export interface TaskRunnerOpts {
+  checkpointRetries?: number;
+}
+
+const DEFAULT_CHECKPOINT_RETRIES = 3;
+
 export class TaskRunner {
   private sm: StateMachine;
   private seq = 0;
+  private currentPlan: Plan;
+  private checkpointRetries: number;
 
   constructor(
     private readonly taskId: string,
-    private readonly plan: Plan,
+    initialPlan: Plan,
     private readonly deps: TaskRunnerDeps,
+    opts: TaskRunnerOpts = {},
     initial: State = "intake",
   ) {
     this.sm = new StateMachine(initial);
+    this.currentPlan = initialPlan;
+    this.checkpointRetries = opts.checkpointRetries ?? DEFAULT_CHECKPOINT_RETRIES;
   }
 
   state(): State { return this.sm.state(); }
   getTaskId(): string { return this.taskId; }
-  getPlan(): Plan { return this.plan; }
+  getPlan(): Plan { return this.currentPlan; }
 
   async transition(to: State, data: Record<string, unknown> = {}): Promise<void> {
     if (!canTransition(this.sm.state(), to)) {
@@ -36,13 +47,28 @@ export class TaskRunner {
     this.seq++;
     await this.deps.log.append(this.taskId, { state: this.sm.state(), event: "transition", data: { to, ...data } });
     this.sm.transition(to);
-    await this.deps.checkpoint.snapshot({
-      seq: this.seq,
-      taskId: this.taskId,
-      state: to,
-      gitTreeSha: "pending",
-      payload: data,
-    });
+    await this.snapshotWithRetry(to, data);
+  }
+
+  private async snapshotWithRetry(to: State, data: Record<string, unknown>): Promise<void> {
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < this.checkpointRetries; attempt++) {
+      try {
+        await this.deps.checkpoint.snapshot({
+          seq: this.seq,
+          taskId: this.taskId,
+          state: to,
+          gitTreeSha: "pending",
+          payload: data,
+        });
+        return;
+      } catch (e) {
+        lastErr = e;
+        const delayMs = 100 * Math.pow(2, attempt);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+    throw new Error(`Checkpoint write failed after ${this.checkpointRetries} attempts: ${(lastErr as Error)?.message}`);
   }
 
   async intake(): Promise<void> {
@@ -50,7 +76,7 @@ export class TaskRunner {
     await this.deps.memory.appendContext({
       ts: new Date().toISOString(),
       source: "intake",
-      body: `Triage: ${this.plan.title}. Existing context entries: ${context.length}`,
+      body: `Triage: ${this.currentPlan.title}. Existing context entries: ${context.length}`,
     });
     await this.transition("plan");
   }
@@ -63,7 +89,7 @@ export class TaskRunner {
   }
 
   async markStepDone(stepId: string): Promise<void> {
-    this.sm.markStepDone(stepId, this.plan);
+    this.currentPlan = this.sm.markStepDone(stepId, this.currentPlan);
     await this.deps.log.append(this.taskId, { state: this.sm.state(), event: "step-done", data: { stepId } });
   }
 
@@ -80,7 +106,7 @@ export class TaskRunner {
     await this.deps.memory.appendLearning({
       ts: new Date().toISOString(),
       source: "summarize",
-      body: `Task ${this.taskId}: ${this.plan.title}\n\n${prDescription}`,
+      body: `Task ${this.taskId}: ${this.currentPlan.title}\n\n${prDescription}`,
     });
   }
 }

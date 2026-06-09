@@ -43,11 +43,11 @@ describe("@pi/tasks state machine", () => {
     };
     const sm = new StateMachine();
     expect(sm.nextStep(plan)?.id).toBe("s1");
-    sm.markStepDone("s1", plan);
-    expect(sm.nextStep(plan)?.id).toBe("s2");
-    sm.markStepDone("s2", plan);
-    expect(sm.nextStep(plan)).toBeNull();
-    expect(sm.isComplete(plan)).toBe(true);
+    const p1 = sm.markStepDone("s1", plan);
+    expect(sm.nextStep(p1)?.id).toBe("s2");
+    const p2 = sm.markStepDone("s2", p1);
+    expect(sm.nextStep(p2)).toBeNull();
+    expect(sm.isComplete(p2)).toBe(true);
   });
 });
 
