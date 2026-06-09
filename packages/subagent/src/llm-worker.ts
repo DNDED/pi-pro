@@ -11,6 +11,7 @@ export interface ToolInstance {
 export interface LlmWorkerOpts {
   maxIterations?: number;
   systemPromptPrefix?: string;
+  model?: string;
 }
 
 const DEFAULT_MAX_ITERATIONS = 10;
@@ -20,6 +21,7 @@ const JSON_STATUS_RE = /\{[\s\S]*?"status"\s*:\s*"(pass|fail|blocked)"[\s\S]*?\}
 export class LlmWorker {
   private readonly maxIterations: number;
   private readonly systemPromptPrefix: string;
+  private readonly model: string | undefined;
   private readonly toolMap: Map<string, ToolInstance>;
   private readonly toolList: ProviderTool[];
 
@@ -31,6 +33,7 @@ export class LlmWorker {
   ) {
     this.maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
     this.systemPromptPrefix = opts.systemPromptPrefix ?? "";
+    this.model = opts.model;
     this.toolMap = new Map(tools.map(t => [t.name, t]));
     this.toolList = tools.map(t => ({
       name: t.name,
@@ -46,7 +49,7 @@ export class LlmWorker {
       { role: "user", content: this.userPrompt(role, context) },
     ];
     const opts: CallOpts = {
-      model: "",
+      model: this.model ?? "",
       tools: this.toolList,
     };
 
@@ -56,14 +59,14 @@ export class LlmWorker {
 
     for (let i = 0; i < this.maxIterations; i++) {
       const stream = this.provider.complete(messages, opts);
-      const toolCalls: Array<{ name: string; args: unknown }> = [];
+      const toolCalls: Array<{ id: string; name: string; args: unknown }> = [];
       let doneSeen = false;
 
       for await (const chunk of stream) {
         if (chunk.type === "token") {
           lastText += chunk.text;
         } else if (chunk.type === "tool_call") {
-          toolCalls.push({ name: chunk.name, args: chunk.args });
+          toolCalls.push({ id: chunk.id, name: chunk.name, args: chunk.args });
         } else if (chunk.type === "done") {
           tokensIn += chunk.usage.in;
           tokensOut += chunk.usage.out;
@@ -87,22 +90,29 @@ export class LlmWorker {
       }
 
       if (toolCalls.length > 0) {
-        messages.push({ role: "assistant", content: [{ type: "text", text: lastText || "..." }, ...toolCalls.map((tc, idx) => ({ type: "tool_use" as const, id: `tc_${i}_${idx}`, name: tc.name, input: tc.args }))] });
-        for (let idx = 0; idx < toolCalls.length; idx++) {
-          const tc = toolCalls[idx];
+        messages.push({ role: "assistant", content: [{ type: "text", text: lastText || "..." }, ...toolCalls.map(tc => ({ type: "tool_use" as const, id: tc.id, name: tc.name, input: tc.args }))] });
+        // Anthropic Messages API requires tool results to come back as
+        // a `user` message containing `tool_result` content blocks (one
+        // per `tool_use`). The OpenAI "role: tool" wire format is not
+        // accepted by Anthropic-compatible endpoints (e.g. MiniMax
+        // returns "tool call result does not follow tool call" if you
+        // send `role: tool` after a `tool_use`).
+        const toolResultBlocks: Array<{ type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean }> = [];
+        for (const tc of toolCalls) {
           const tool = this.toolMap.get(tc.name);
           if (!tool) {
-            messages.push({ role: "tool", tool_call_id: `tc_${i}_${idx}`, content: `Tool "${tc.name}" is not allowed for role "${role}".` });
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: tc.id, content: `Tool "${tc.name}" is not allowed for role "${role}".`, is_error: true });
             continue;
           }
           try {
             const result = await tool.execute((tc.args ?? {}) as Record<string, unknown>);
             const resultStr = typeof result === "string" ? result : JSON.stringify(result);
-            messages.push({ role: "tool", tool_call_id: `tc_${i}_${idx}`, content: resultStr.slice(0, 8000) });
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: tc.id, content: resultStr.slice(0, 8000) });
           } catch (e) {
-            messages.push({ role: "tool", tool_call_id: `tc_${i}_${idx}`, content: `Error: ${(e as Error).message}` });
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: tc.id, content: `Error: ${(e as Error).message}`, is_error: true });
           }
         }
+        messages.push({ role: "user", content: toolResultBlocks });
         lastText = "";
         continue;
       }
@@ -124,9 +134,18 @@ export class LlmWorker {
     return [
       this.systemPromptPrefix,
       "",
-      "When you have finished, your final response MUST be a JSON object of the form:",
-      '{"status": "pass"|"fail"|"blocked", "evidence": "<short string>"}',
-      "Do not include any text before or after the JSON. Just the JSON object, on its own line(s).",
+      "## Critical: how to finish",
+      "",
+      "After you have used the tools to complete (or attempt) the work, you MUST stop calling tools and respond with EXACTLY this JSON object, on its own, with no other text:",
+      "",
+      '{"status": "pass"|"fail"|"blocked", "evidence": "<one-line summary of what you did>"}',
+      "",
+      "Status semantics:",
+      '  - "pass":    work is complete, all relevant tests/verification pass',
+      '  - "fail":    you could not complete the work (compilation error, test failure, missing dep)',
+      '  - "blocked": you do not have enough info / a tool you need is missing',
+      "",
+      "Do NOT call any more tools after you have enough information to judge pass/fail/blocked. Do NOT explain your reasoning. Do NOT use markdown. Just the JSON object, exactly as shown above, on a single line.",
     ].filter(Boolean).join("\n");
   }
 

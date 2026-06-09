@@ -66,6 +66,21 @@ class OpenAICompatProvider implements Provider {
       throw new Error(`${this.name} ${res.status}: ${await res.text()}`);
     }
 
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("text/event-stream") && res.body) {
+      const raw = await res.text();
+      if (raw && !raw.startsWith("data:") && raw.startsWith("{")) {
+        const parsed = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+        const text = (parsed.choices ?? []).map(c => c.message?.content ?? "").join("");
+        if (text) yield { type: "token", text };
+        yield { type: "done", usage: { in: parsed.usage?.prompt_tokens ?? 0, out: parsed.usage?.completion_tokens ?? 0 } };
+        return;
+      }
+      if (raw && !raw.startsWith("data:")) {
+        throw new Error(`${this.name} returned non-SSE response (content-type: ${ct}). Body: ${raw.slice(0, 200)}`);
+      }
+    }
+
     if (!res.body) {
       yield { type: "done", usage: { in: 0, out: 0 } };
       return;
@@ -94,7 +109,7 @@ class OpenAICompatProvider implements Provider {
           }
           if (parsed.choices?.[0]?.delta?.tool_calls?.[0]) {
             const tc = parsed.choices[0].delta.tool_calls[0];
-            yield { type: "tool_call", name: tc.function?.name ?? "unknown", args: tc.function?.arguments ? JSON.parse(tc.function.arguments) : {} };
+            yield { type: "tool_call", id: tc.id ?? `tc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name: tc.function?.name ?? "unknown", args: tc.function?.arguments ? JSON.parse(tc.function.arguments) : {} };
           }
           if (parsed.usage) {
             inTokens = parsed.usage.prompt_tokens ?? inTokens;

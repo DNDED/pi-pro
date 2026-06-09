@@ -39,21 +39,25 @@ export interface LlmBenchRunnerOpts {
   maxIterations?: number;
   benchFixturesRel?: string;
   bootstrapDeps?: boolean;
+  model?: string;
 }
 
-const FIXTURES_REL_DEFAULT = "../../bench/fixtures";
+const FIXTURES_REL_DEFAULT = "bench/fixtures";
 
 function findFixturesDir(opts: LlmBenchRunnerOpts): string {
   const cwd = process.cwd();
   const candidates = [
+    opts.benchFixturesRel && existsSync(opts.benchFixturesRel) ? resolve(opts.benchFixturesRel) : null,
     join(cwd, opts.benchFixturesRel ?? FIXTURES_REL_DEFAULT),
-    join(cwd, "..", "fixtures"),
     join(cwd, "fixtures"),
-  ];
+    join(cwd, "..", "fixtures"),
+    join(cwd, "..", "..", "fixtures"),
+    join(cwd, "..", "..", "..", "fixtures"),
+  ].filter((p): p is string => p !== null);
   for (const dir of candidates) {
-    if (existsSync(dir)) return resolve(dir);
+    if (existsSync(dir)) return dir;
   }
-  throw new Error(`Could not locate bench/fixtures from ${cwd}`);
+  throw new Error(`Could not locate bench/fixtures from ${cwd} (tried ${candidates.length} paths)`);
 }
 
 function copyDir(src: string, dest: string): void {
@@ -135,7 +139,10 @@ export class LlmBenchRunner {
       createGlobTool({ cwd: fixtureCopy }) as unknown as never,
       createWebfetchTool() as unknown as never,
     ];
-    const worker = new LlmWorker(this.provider, toolInstances, fixtureCopy, { maxIterations: this.opts.maxIterations ?? 8 });
+    const worker = new LlmWorker(this.provider, toolInstances, fixtureCopy, {
+      maxIterations: this.opts.maxIterations ?? 12,
+      model: this.opts.model,
+    });
 
     let tokensIn = 0;
     let tokensOut = 0;

@@ -17,7 +17,7 @@ export async function benchCommand(opts: { parallel?: boolean; concurrency?: str
   const provider = new OpenCodeGoProvider({ apiKey, model: cfg.model });
   const workdir = await mkdtemp(join(tmpdir(), "pi-pro-bench-"));
   try {
-    const runner = new LlmBenchRunner(provider, { workspaceRoot: workdir });
+    const runner = new LlmBenchRunner(provider, { workspaceRoot: workdir, model: cfg.model });
     const concurrency = opts.concurrency ? parseInt(opts.concurrency, 10) : undefined;
     const summary = opts.parallel
       ? await runner.runAllParallel(undefined, concurrency)

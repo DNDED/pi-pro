@@ -7,6 +7,7 @@ interface AnthropicRequest {
   messages: Array<{ role: "user" | "assistant"; content: string | Array<Record<string, unknown>> }>;
   tools?: Array<{ name: string; description: string; input_schema: Record<string, unknown> }>;
   temperature?: number;
+  stream?: boolean;
 }
 
 export class OpenCodeGoProvider implements Provider {
@@ -18,7 +19,7 @@ export class OpenCodeGoProvider implements Provider {
   constructor(cfg: ProviderConfig) {
     if (!cfg.apiKey) throw new Error("OpenCodeGoProvider requires apiKey");
     this.apiKey = cfg.apiKey;
-    this.baseUrl = cfg.baseUrl ?? "https://api.opencode.ai";
+    this.baseUrl = cfg.baseUrl ?? "https://opencode.ai/zen/go";
     this.defaultModel = cfg.model;
   }
 
@@ -46,6 +47,7 @@ export class OpenCodeGoProvider implements Provider {
       body.tools = opts.tools.map((t: Tool) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
     }
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
+    body.stream = true;
 
     const res = await fetch(`${this.baseUrl}/v1/messages`, {
       method: "POST",
@@ -61,6 +63,26 @@ export class OpenCodeGoProvider implements Provider {
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`OpenCodeGo ${res.status}: ${text}`);
+    }
+
+    const ct = res.headers.get("content-type") ?? "";
+
+    // If the server returned a non-streaming JSON response despite our
+    // stream=true request, parse the single Anthropic message shape
+    // and yield it as a single token + done. Some OpenCode Go
+    // endpoints do this for short responses.
+    if (!ct.includes("text/event-stream") && res.body) {
+      const raw = await res.text();
+      if (raw && !raw.startsWith("data:") && raw.startsWith("{")) {
+        const parsed = JSON.parse(raw) as { content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
+        const text = (parsed.content ?? []).filter(b => b.type === "text").map(b => b.text ?? "").join("");
+        if (text) yield { type: "token", text };
+        yield { type: "done", usage: { in: parsed.usage?.input_tokens ?? 0, out: parsed.usage?.output_tokens ?? 0 } };
+        return;
+      }
+      if (raw && !raw.startsWith("data:")) {
+        throw new Error(`OpenCodeGo returned non-SSE response (content-type: ${ct}). Body: ${raw.slice(0, 200)}`);
+      }
     }
 
     if (!res.body) {
@@ -93,7 +115,7 @@ export class OpenCodeGoProvider implements Provider {
           } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
             yield { type: "token", text: parsed.delta.text ?? "" };
           } else if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
-            yield { type: "tool_call", name: parsed.content_block.name, args: parsed.content_block.input };
+            yield { type: "tool_call", id: parsed.content_block.id, name: parsed.content_block.name, args: parsed.content_block.input };
           }
         } catch {
           /* ignore malformed lines */

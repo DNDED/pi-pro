@@ -45,14 +45,14 @@ export interface CallOpts {
 
 export type StreamChunk =
   | { type: "token"; text: string }
-  | { type: "tool_call"; name: string; args: unknown }
+  | { type: "tool_call"; id: string; name: string; args: unknown }
   | { type: "done"; usage: { in: number; out: number } };
 
 export function isTokenChunk(c: StreamChunk): c is { type: "token"; text: string } {
   return c.type === "token";
 }
 
-export function isToolCallChunk(c: StreamChunk): c is { type: "tool_call"; name: string; args: unknown } {
+export function isToolCallChunk(c: StreamChunk): c is { type: "tool_call"; id: string; name: string; args: unknown } {
   return c.type === "tool_call";
 }
 

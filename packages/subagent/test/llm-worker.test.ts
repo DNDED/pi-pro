@@ -117,9 +117,11 @@ describe("LlmWorker", () => {
     expect(r.status).toBe("pass");
     expect(p.captured).toHaveLength(2);
     const secondCall = p.captured[1].messages;
-    const toolResult = secondCall.find(m => m.role === "tool");
-    expect(toolResult).toBeDefined();
-    expect(JSON.stringify(toolResult)).toContain("test-output");
+    // Anthropic Messages API: tool results come back as a user-role
+    // message containing `tool_result` content blocks (one per tool_use).
+    const userMessageWithToolResult = secondCall.find(m => m.role === "user" && Array.isArray(m.content) && m.content.some((b: { type: string }) => b.type === "tool_result"));
+    expect(userMessageWithToolResult).toBeDefined();
+    expect(JSON.stringify(userMessageWithToolResult)).toContain("test-output");
   });
 
   it("times out after maxIterations to prevent infinite loops", async () => {

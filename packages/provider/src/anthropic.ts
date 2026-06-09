@@ -62,6 +62,21 @@ export class AnthropicProvider implements Provider {
       throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
     }
 
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("text/event-stream") && res.body) {
+      const raw = await res.text();
+      if (raw && !raw.startsWith("data:") && raw.startsWith("{")) {
+        const parsed = JSON.parse(raw) as { content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
+        const text = (parsed.content ?? []).filter(b => b.type === "text").map(b => b.text ?? "").join("");
+        if (text) yield { type: "token", text };
+        yield { type: "done", usage: { in: parsed.usage?.input_tokens ?? 0, out: parsed.usage?.output_tokens ?? 0 } };
+        return;
+      }
+      if (raw && !raw.startsWith("data:")) {
+        throw new Error(`Anthropic returned non-SSE response (content-type: ${ct}). Body: ${raw.slice(0, 200)}`);
+      }
+    }
+
     if (!res.body) {
       yield { type: "done", usage: { in: 0, out: 0 } };
       return;
@@ -92,7 +107,7 @@ export class AnthropicProvider implements Provider {
           } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
             yield { type: "token", text: parsed.delta.text ?? "" };
           } else if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
-            yield { type: "tool_call", name: parsed.content_block.name, args: parsed.content_block.input };
+            yield { type: "tool_call", id: parsed.content_block.id, name: parsed.content_block.name, args: parsed.content_block.input };
           }
         } catch { /* ignore */ }
       }
