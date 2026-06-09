@@ -74,16 +74,29 @@ function copyDir(src: string, dest: string): void {
   }
 }
 
+const INSTALL_HINTS: Record<string, string> = {
+  "tiny-express": "cd into the fixture and run: npm install",
+  "tiny-cli": "install pytest with: apt install python3-pytest  OR  pip install pytest",
+  "tiny-go-svc": "install the go toolchain from https://go.dev/dl/ and ensure 'go' is in your PATH",
+};
+
+export function installHintFor(fixture: string): string {
+  return INSTALL_HINTS[fixture] ?? `install dependencies for fixture '${fixture}' manually`;
+}
+
 function bootstrapDeps(fixtureCopy: string, fixture: string): { bootstrapped: boolean; message?: string } {
   switch (fixture) {
     case "tiny-express": {
       const pkg = join(fixtureCopy, "package.json");
-      if (!existsSync(pkg)) return { bootstrapped: false, message: "no package.json" };
+      if (!existsSync(pkg)) {
+        return { bootstrapped: false, message: `fixture ${fixture}: no package.json. ${INSTALL_HINTS[fixture]}` };
+      }
       try {
         execSync("npm install --no-audit --no-fund --silent", { cwd: fixtureCopy, stdio: "pipe", timeout: 120_000 });
         return { bootstrapped: true };
       } catch (e) {
-        return { bootstrapped: false, message: `npm install failed: ${(e as Error).message}` };
+        const detail = (e as Error).message;
+        return { bootstrapped: false, message: `fixture ${fixture}: npm install failed (${detail}). ${INSTALL_HINTS[fixture]}` };
       }
     }
     case "tiny-cli": {
@@ -91,11 +104,14 @@ function bootstrapDeps(fixtureCopy: string, fixture: string): { bootstrapped: bo
         execSync("python3 -m pip install --user pytest 2>&1 || python3 -m pip install pytest 2>&1", { cwd: fixtureCopy, stdio: "pipe", timeout: 60_000 });
         return { bootstrapped: true };
       } catch (e) {
-        return { bootstrapped: false, message: `pip install pytest failed: ${(e as Error).message}` };
+        const detail = (e as Error).message;
+        return { bootstrapped: false, message: `fixture ${fixture}: pytest not available (${detail}). ${INSTALL_HINTS[fixture]}` };
       }
     }
-    case "tiny-go-svc": return { bootstrapped: false, message: "go toolchain not bootstrapable from node" };
-    default: return { bootstrapped: false, message: "unknown fixture" };
+    case "tiny-go-svc":
+      return { bootstrapped: false, message: `fixture ${fixture}: ${INSTALL_HINTS[fixture]}` };
+    default:
+      return { bootstrapped: false, message: `unknown fixture '${fixture}'. ${INSTALL_HINTS[fixture]}` };
   }
 }
 

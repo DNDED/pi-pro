@@ -42,16 +42,33 @@ describe("@pi/tools/edit", () => {
     expect(await readFile(p, "utf8")).toBe("// ok\n");
   });
 
-  it("reports occurrences > 1 when oldText appears multiple times", async () => {
+  it("replaces ALL occurrences when oldText appears multiple times", async () => {
     const p = join(workdir, "f.txt");
     await writeFile(p, "foo bar foo baz foo\n", "utf8");
     const edit = createEditTool();
     const result = await edit.execute({ path: p, oldText: "foo", newText: "FOO" });
     expect(result.replaced).toBe(3);
-    // String#replace only replaces the first occurrence by default. The contract here is:
-    // "replaced" counts ALL occurrences, but only the first is actually swapped in.
-    // This test pins the actual behavior so any future change is intentional.
-    expect(await readFile(p, "utf8")).toBe("FOO bar foo baz foo\n");
+    // replaceAll swaps every occurrence; this test pins that contract.
+    expect(await readFile(p, "utf8")).toBe("FOO bar FOO baz FOO\n");
+  });
+
+  it("replaces 3+ occurrences correctly", async () => {
+    const p = join(workdir, "f.txt");
+    await writeFile(p, "x x x x x x x\n", "utf8");
+    const edit = createEditTool();
+    const result = await edit.execute({ path: p, oldText: "x", newText: "y" });
+    expect(result.replaced).toBe(7);
+    expect(await readFile(p, "utf8")).toBe("y y y y y y y\n");
+  });
+
+  it("handles overlapping patterns by replacing each non-overlapping match in left-to-right order", async () => {
+    const p = join(workdir, "f.txt");
+    await writeFile(p, "abababab\n", "utf8");
+    const edit = createEditTool();
+    const result = await edit.execute({ path: p, oldText: "aba", newText: "X" });
+    // "aba" appears twice in "abababab" (positions 0-2 and 4-6); non-overlapping.
+    expect(result.replaced).toBe(2);
+    expect(await readFile(p, "utf8")).toBe("XbXb\n");
   });
 
   it("preserves trailing newlines", async () => {

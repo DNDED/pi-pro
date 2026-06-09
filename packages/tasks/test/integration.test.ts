@@ -61,7 +61,6 @@ describe("@pi/tasks — end-to-end TaskRunner integration", () => {
     await runner.verifyPassed();
     expect(runner.state()).toBe("summarize");
     await runner.summarize("Added /healthz returning 200, all 3 steps complete.");
-    await runner.transition("done");
     expect(runner.state()).toBe("done");
 
     const checkpoints = await deps.checkpoint.listForTask(taskId);
@@ -176,7 +175,6 @@ describe("@pi/tasks — end-to-end TaskRunner integration", () => {
     await runner.markStepDone("x");
     await runner.verifyPassed();
     await runner.summarize("done");
-    await runner.transition("done");
 
     expect((await deps.checkpoint.listForTask(taskId)).length).toBeGreaterThan(0);
     expect(existsSync(wt.path)).toBe(true);
@@ -200,7 +198,6 @@ describe("@pi/tasks — end-to-end TaskRunner integration", () => {
     await runner.branch();
     await runner.verifyPassed();
     await runner.summarize("log probe done");
-    await runner.transition("done");
 
     const logPath = join(dir, ".pi-pro/sessions", `${taskId}.jsonl`);
     const s = await stat(logPath);

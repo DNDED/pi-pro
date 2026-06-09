@@ -34,7 +34,7 @@ export function createEditTool(opts: EditOpts = {}): EditTool {
       if (occurrences === 0) {
         throw new Error(`edit: oldText not found in ${path}`);
       }
-      const next = current.replace(oldText, newText);
+      const next = current.replaceAll(oldText, newText);
       const violations = scanForSecrets(next);
       if (violations.length > 0) {
         throw new Error(`edit: refusing to write ${path} — ${violations.map(v => v.message).join("; ")}`);

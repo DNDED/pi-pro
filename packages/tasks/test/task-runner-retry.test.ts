@@ -66,4 +66,99 @@ describe("TaskRunner — retry on checkpoint failure", () => {
     expect(spy).toHaveBeenCalledTimes(2);
     spy.mockRestore();
   });
+
+  it("two TaskRunner instances on the same task produce non-overlapping chk ids", async () => {
+    const checkpoint = new CheckpointStore(dir);
+    const memory = new SessionMemory(dir);
+    const log = new SessionLog(dir);
+    const worktree = new WorktreeStore(dir);
+    const taskId = checkpoint.newTaskId();
+    const plan: Plan = { taskId, title: "shared", steps: [] };
+
+    const r1 = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await r1.intake();
+    const after1 = await checkpoint.listForTask(taskId);
+    expect(after1.length).toBe(1);
+    expect(after1[0].id).toBe("chk_000001");
+
+    const r2 = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await r2.intake();
+    const after2 = await checkpoint.listForTask(taskId);
+    expect(after2.length).toBe(2);
+    const ids = after2.map(c => c.id).sort();
+    expect(ids).toEqual(["chk_000001", "chk_000002"]);
+  });
+
+  it("continues seq after a mid-task resume from the latest checkpoint", async () => {
+    const checkpoint = new CheckpointStore(dir);
+    const memory = new SessionMemory(dir);
+    const log = new SessionLog(dir);
+    const worktree = new WorktreeStore(dir);
+    const taskId = checkpoint.newTaskId();
+    const plan: Plan = { taskId, title: "resume", steps: [] };
+
+    const r1 = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await r1.intake();
+    await r1.branch();
+    expect((await checkpoint.latest(taskId))?.id).toBe("chk_000003");
+
+    const r2 = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await r2.markStepDone("nonexistent").catch(() => {});
+    const ids = (await checkpoint.listForTask(taskId)).map(c => c.id);
+    // r2 doesn't write a checkpoint for markStepDone (no transition), so latest should still be 000003.
+    expect(ids).toEqual(["chk_000001", "chk_000002", "chk_000003"]);
+  });
+});
+
+describe("TaskRunner — verify and summarize transitions", () => {
+  it("markVerifyPass transitions to summarize", async () => {
+    const checkpoint = new CheckpointStore(dir);
+    const memory = new SessionMemory(dir);
+    const log = new SessionLog(dir);
+    const worktree = new WorktreeStore(dir);
+    const taskId = checkpoint.newTaskId();
+    const plan: Plan = { taskId, title: "v", steps: [] };
+    const runner = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await runner.intake();
+    await runner.branch();
+    expect(runner.state()).toBe("execute");
+    await runner.markVerifyPass();
+    expect(runner.state()).toBe("summarize");
+  });
+
+  it("markVerifyFail transitions back to execute with the reason in the payload", async () => {
+    const checkpoint = new CheckpointStore(dir);
+    const memory = new SessionMemory(dir);
+    const log = new SessionLog(dir);
+    const worktree = new WorktreeStore(dir);
+    const taskId = checkpoint.newTaskId();
+    const plan: Plan = { taskId, title: "v", steps: [] };
+    const runner = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await runner.intake();
+    await runner.branch();
+    await runner.markVerifyFail("tests failing on test_foo");
+    expect(runner.state()).toBe("execute");
+    const latest = await checkpoint.latest(taskId);
+    expect(latest?.payload).toMatchObject({ verify: "fail", reason: "tests failing on test_foo" });
+  });
+
+  it("summarize() writes to memory AND transitions to done", async () => {
+    const checkpoint = new CheckpointStore(dir);
+    const memory = new SessionMemory(dir);
+    const log = new SessionLog(dir);
+    const worktree = new WorktreeStore(dir);
+    const taskId = checkpoint.newTaskId();
+    const plan: Plan = { taskId, title: "sm", steps: [] };
+    const runner = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
+    await runner.intake();
+    await runner.branch();
+    await runner.markVerifyPass();
+    expect(runner.state()).toBe("summarize");
+    await runner.summarize("PR description here");
+    expect(runner.state()).toBe("done");
+    const memRaw = await memory.read();
+    expect(memRaw).toContain("PR description here");
+    const latest = await checkpoint.latest(taskId);
+    expect(latest?.state).toBe("done");
+  });
 });

@@ -18,6 +18,8 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@types/picomatch": "^4.0.3",
+    "picomatch": "^4.0.4",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

@@ -85,7 +85,6 @@ describe("TaskRunner end-to-end", () => {
     await runner.verifyPassed();
     expect(runner.state()).toBe("summarize");
     await runner.summarize("smoke complete");
-    await runner.transition("done");
     expect(runner.state()).toBe("done");
     const events = await log.read(taskId);
     expect(events.length).toBeGreaterThan(0);

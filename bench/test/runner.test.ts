@@ -5,6 +5,20 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { runTask, listFixtures, testCommandFor } from "../src/runner.js";
+import { LlmBenchRunner, installHintFor } from "../src/llm-bench-runner.js";
+import { Provider, Message, StreamChunk, CallOpts } from "@pi/provider";
+import { BenchTask } from "../tasks/index.js";
+
+class ScriptedProvider implements Provider {
+  name = "scripted";
+  responses: Array<Array<StreamChunk>> = [];
+  callIndex = 0;
+  async *complete(_messages: Message[], _opts: CallOpts): AsyncIterable<StreamChunk> {
+    const r = this.responses[this.callIndex++];
+    if (!r) throw new Error("no response queued");
+    for (const c of r) yield c;
+  }
+}
 
 let fixturesRoot: string;
 let originalCwd: string;
@@ -51,5 +65,39 @@ describe("bench: fixture-level test commands", () => {
     expect(testCommandFor("tiny-express")).toContain("node");
     expect(testCommandFor("tiny-cli")).toContain("pytest");
     expect(testCommandFor("tiny-go-svc")).toContain("go test");
+  });
+});
+
+describe("bench: actionable skip hints", () => {
+  it("installHintFor returns a non-empty install command for every known fixture", () => {
+    for (const f of ["tiny-express", "tiny-cli", "tiny-go-svc"]) {
+      const hint = installHintFor(f);
+      expect(hint.length).toBeGreaterThan(0);
+      expect(hint).not.toMatch(/^install dependencies/);
+    }
+  });
+
+  it("skipReason contains the fixture name AND the install hint when deps bootstrap fails", async () => {
+    const workdir = await mkdtemp(join(tmpdir(), "bench-hint-"));
+    try {
+      const provider = new ScriptedProvider();
+      provider.responses.push([
+        { type: "token", text: '{"status": "pass", "evidence": "x"}' },
+        { type: "done", usage: { in: 0, out: 0 } },
+      ]);
+      const runner = new LlmBenchRunner(provider, { workspaceRoot: workdir });
+      const task: BenchTask = { id: "t1", fixture: "tiny-cli", description: "x", expected: {} };
+      const result = await runner.runOne(task);
+      expect(result.skipped).toBe(true);
+      expect(result.skipReason).toBeDefined();
+      // The new contract: the skipReason must contain the fixture name
+      // AND an actionable install hint.
+      expect(result.skipReason).toContain("tiny-cli");
+      expect(result.skipReason).toMatch(/install/i);
+      // Format is parseable: "fixture <name>: <reason>. <install-hint>"
+      expect(result.skipReason).toMatch(/^fixture tiny-cli:.*\..*$/);
+    } finally {
+      await rm(workdir, { recursive: true, force: true });
+    }
   });
 });
