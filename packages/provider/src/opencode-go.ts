@@ -95,6 +95,7 @@ export class OpenCodeGoProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    const toolBlocks = new Map<number, { id: string; name: string; inputJson: string }>();
 
     while (true) {
       const { value, done } = await reader.read();
@@ -103,8 +104,12 @@ export class OpenCodeGoProvider implements Provider {
       const events = buffer.split("\n\n");
       buffer = events.pop() ?? "";
       for (const evt of events) {
-        const line = evt.split("\n").find(l => l.startsWith("data: ")) ?? "";
-        const data = line.slice(6).trim();
+        // Some events have multiple "data:" lines (e.g. when an
+        // "event:" line precedes a "data:" line, OR when the API emits
+        // continuation lines). Concatenate ALL "data:" lines so we
+        // don't silently drop content.
+        const dataLines = evt.split("\n").filter(l => l.startsWith("data: "));
+        const data = dataLines.map(l => l.slice(6)).join("").trim();
         if (!data || data === "[DONE]") continue;
         try {
           const parsed = JSON.parse(data);
@@ -115,7 +120,37 @@ export class OpenCodeGoProvider implements Provider {
           } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
             yield { type: "token", text: parsed.delta.text ?? "" };
           } else if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
-            yield { type: "tool_call", id: parsed.content_block.id, name: parsed.content_block.name, args: parsed.content_block.input };
+            // Start a new tool block. Do NOT yield yet — the input
+            // arrives via subsequent input_json_delta events. The
+            // initial `input` field on content_block_start is always
+            // an empty object {} in the Anthropic wire format; we
+            // start with an empty string and only accumulate from
+            // input_json_delta partials.
+            const blockIdx = parsed.index ?? 0;
+            toolBlocks.set(blockIdx, {
+              id: parsed.content_block.id,
+              name: parsed.content_block.name,
+              inputJson: "",
+            });
+          } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
+            const blockIdx = parsed.index ?? 0;
+            const block = toolBlocks.get(blockIdx);
+            if (block) block.inputJson += parsed.delta.partial_json ?? "";
+          } else if (parsed.type === "content_block_stop") {
+            const blockIdx = parsed.index ?? 0;
+            const block = toolBlocks.get(blockIdx);
+            if (block) {
+              let args: unknown = {};
+              if (block.inputJson) {
+                try {
+                  args = JSON.parse(block.inputJson);
+                } catch {
+                  args = {};
+                }
+              }
+              yield { type: "tool_call", id: block.id, name: block.name, args };
+              toolBlocks.delete(blockIdx);
+            }
           }
         } catch {
           /* ignore malformed lines */
