@@ -1,11 +1,30 @@
 import { Role, StepContext, SubagentResult, SubagentResultSchema, Worker } from "./types.js";
 import { allowedTools } from "./tool-restrictions.js";
 import { promptFor, StubWorker } from "./worker.js";
+import { LlmWorker, ToolInstance } from "./llm-worker.js";
+import {
+  createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool,
+} from "@pi/tools";
+import type { Provider } from "@pi/provider";
 
 const RETRY_LIMIT = 2;
 
 export class SubagentRouter {
   constructor(private readonly worker: Worker = new StubWorker()) {}
+
+  static withProvider(provider: Provider, workdir: string): SubagentRouter {
+    const allTools: ToolInstance[] = [
+      createBashTool({ cwd: workdir }) as unknown as ToolInstance,
+      createReadTool({ cwd: workdir }) as unknown as ToolInstance,
+      createWriteTool({ cwd: workdir }) as unknown as ToolInstance,
+      createEditTool({ cwd: workdir }) as unknown as ToolInstance,
+      createGrepTool({ cwd: workdir }) as unknown as ToolInstance,
+      createGlobTool({ cwd: workdir }) as unknown as ToolInstance,
+      createWebfetchTool() as unknown as ToolInstance,
+    ];
+    const llm = new LlmWorker(provider, allTools, workdir);
+    return new SubagentRouter(llm);
+  }
 
   async dispatch(role: Role, context: StepContext): Promise<SubagentResult> {
     const prompt = promptFor(role, context);

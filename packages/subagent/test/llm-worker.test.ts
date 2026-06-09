@@ -1,0 +1,138 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execSync } from "node:child_process";
+import { LlmWorker } from "../src/llm-worker.js";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
+import { StepContext } from "../src/types.js";
+import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@pi/tools";
+
+class FakeProvider implements Provider {
+  name = "fake";
+  responses: Array<AsyncIterable<StreamChunk>> = [];
+  callIndex = 0;
+  captured: Array<{ messages: Message[]; opts: CallOpts }> = [];
+
+  queue(chunks: StreamChunk[]): void {
+    this.responses.push((async function* () { for (const c of chunks) yield c; })());
+  }
+
+  async *complete(messages: Message[], opts: CallOpts): AsyncIterable<StreamChunk> {
+    this.captured.push({ messages, opts });
+    const r = this.responses[this.callIndex++];
+    if (!r) throw new Error("FakeProvider: no more queued responses");
+    for await (const c of r) yield c;
+  }
+}
+
+let workdir: string;
+beforeEach(async () => {
+  workdir = await mkdtemp(join(tmpdir(), "llm-worker-"));
+  execSync("git init -q", { cwd: workdir });
+  execSync("git config user.email t@local", { cwd: workdir });
+  execSync("git config user.name t", { cwd: workdir });
+  execSync("git commit --allow-empty -q -m init", { cwd: workdir });
+});
+afterEach(async () => {
+  await rm(workdir, { recursive: true, force: true });
+});
+
+const ctx = (overrides: Partial<StepContext> = {}): StepContext => ({
+  taskId: "tsk_abc123",
+  stepId: "s1",
+  description: "Add a /healthz endpoint",
+  worktreePath: workdir,
+  ...overrides,
+});
+
+describe("LlmWorker", () => {
+  it("returns pass when the model emits a JSON status in a text block", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "added /healthz returning 200"}' },
+      { type: "done", usage: { in: 100, out: 20 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool(), createReadTool(), createWriteTool(), createEditTool(), createGrepTool(), createGlobTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+    expect(r.evidence).toContain("healthz");
+    expect(r.tokensIn).toBe(100);
+    expect(r.tokensOut).toBe(20);
+  });
+
+  it("returns fail when the model emits status=fail", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: '{"status": "fail", "evidence": "could not run tests"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("fail");
+  });
+
+  it("returns blocked when the model never emits a JSON status", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: "I think this is a good idea but let me think more" },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("blocked");
+    expect(r.evidence).toMatch(/JSON status/);
+  });
+
+  it("restricts the tool schema to only the role's allowed tools", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "review only"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createReadTool(), createGrepTool(), createGlobTool()], workdir);
+    await w.run("code-reviewer", ctx());
+    const opts = p.captured[0].opts;
+    expect(opts.tools).toBeDefined();
+    const names = (opts.tools ?? []).map(t => t.name);
+    expect(names).toContain("read");
+    expect(names).toContain("grep");
+    expect(names).toContain("glob");
+    expect(names).not.toContain("bash");
+    expect(names).not.toContain("write");
+  });
+
+  it("executes a tool_call and feeds the result back to the model", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "tool_call", name: "bash", args: { cmd: "echo test-output" } },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "echoed test-output"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+    expect(p.captured).toHaveLength(2);
+    const secondCall = p.captured[1].messages;
+    const toolResult = secondCall.find(m => m.role === "tool");
+    expect(toolResult).toBeDefined();
+    expect(JSON.stringify(toolResult)).toContain("test-output");
+  });
+
+  it("times out after maxIterations to prevent infinite loops", async () => {
+    const p = new FakeProvider();
+    for (let i = 0; i < 12; i++) {
+      p.queue([
+        { type: "tool_call", name: "bash", args: { cmd: "echo loop" } },
+        { type: "done", usage: { in: 0, out: 0 } },
+      ]);
+    }
+    const w = new LlmWorker(p, [createBashTool()], workdir, { maxIterations: 3 });
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("blocked");
+    expect(r.evidence).toMatch(/iterations|limit/i);
+  });
+});

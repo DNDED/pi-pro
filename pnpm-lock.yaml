@@ -105,6 +105,12 @@ importers:
 
   packages/subagent:
     dependencies:
+      '@pi/provider':
+        specifier: workspace:*
+        version: link:../provider
+      '@pi/tools':
+        specifier: workspace:*
+        version: link:../tools
       zod:
         specifier: ^3.23.0
         version: 3.25.76
