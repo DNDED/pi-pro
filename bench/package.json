@@ -5,11 +5,14 @@
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
-  "exports": { ".": "./dist/src/index.js" },
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "bench": "tsx src/runner.ts"
+    "bench": "tsx src/runner.ts",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@pi/provider": "workspace:*",

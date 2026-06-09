@@ -5,12 +5,19 @@
   "type": "module",
   "main": "./dist/loader.js",
   "types": "./dist/loader.d.ts",
-  "exports": { ".": "./dist/loader.js" },
-  "files": ["dist", "skills", "prompt.md"],
+  "exports": {
+    ".": "./dist/loader.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "prompt.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "gray-matter": "^4.0.3"

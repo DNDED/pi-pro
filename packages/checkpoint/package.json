@@ -4,12 +4,17 @@
   "type": "module",
   "main": "./dist/store.js",
   "types": "./dist/store.d.ts",
-  "exports": { ".": "./dist/store.js" },
-  "files": ["dist"],
+  "exports": {
+    ".": "./dist/store.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.23.0"

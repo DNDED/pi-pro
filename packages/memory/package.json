@@ -4,12 +4,17 @@
   "type": "module",
   "main": "./dist/session-memory.js",
   "types": "./dist/session-memory.d.ts",
-  "exports": { ".": "./dist/session-memory.js" },
-  "files": ["dist"],
+  "exports": {
+    ".": "./dist/session-memory.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
