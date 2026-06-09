@@ -18,6 +18,7 @@
     "@pi/subagent": "workspace:*",
     "@pi/tui-pro": "workspace:*",
     "@pi/provider": "workspace:*",
+    "@pi/bench": "workspace:*",
     "commander": "^12.0.0"
   },
   "devDependencies": {

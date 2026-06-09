@@ -20,6 +20,9 @@ importers:
 
   apps/pi-pro:
     dependencies:
+      '@pi/bench':
+        specifier: workspace:*
+        version: link:../../bench
       '@pi/checkpoint':
         specifier: workspace:*
         version: link:../../packages/checkpoint
@@ -56,6 +59,16 @@ importers:
         version: 1.6.1(@types/node@20.19.42)
 
   bench:
+    dependencies:
+      '@pi/provider':
+        specifier: workspace:*
+        version: link:../packages/provider
+      '@pi/subagent':
+        specifier: workspace:*
+        version: link:../packages/subagent
+      '@pi/tools':
+        specifier: workspace:*
+        version: link:../packages/tools
     devDependencies:
       tsx:
         specifier: ^4.19.0

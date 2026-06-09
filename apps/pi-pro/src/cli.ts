@@ -5,6 +5,7 @@ import { replay } from "./commands/replay.js";
 import { runMerge } from "./commands/merge.js";
 import { doctor } from "./commands/doctor.js";
 import { config } from "./commands/config.js";
+import { benchCommand } from "./commands/bench.js";
 
 export function main(): void {
   const program = new Command();
@@ -45,6 +46,13 @@ export function main(): void {
     .command("config [action] [key] [value]")
     .description("show or update pi-pro configuration")
     .action(async (action?: string, key?: string, value?: string) => config(action, key, value));
+
+  program
+    .command("bench")
+    .description("run the 5-task LLM eval and print completion rate")
+    .option("-p, --parallel", "run all 5 tasks in parallel")
+    .option("-c, --concurrency <n>", "max concurrent tasks (parallel mode)")
+    .action(async (opts: { parallel?: boolean; concurrency?: string }) => benchCommand(opts));
 
   program.parseAsync(process.argv).catch(e => { console.error(e); process.exit(1); });
 }
