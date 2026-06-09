@@ -135,6 +135,15 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)
 
+  packages/tools:
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
   packages/tui-pro:
     dependencies:
       ink:
