@@ -1,0 +1,106 @@
+import { Provider, Message, CallOpts, StreamChunk, Tool, ProviderConfig } from "./types.js";
+
+interface AnthropicRequest {
+  model: string;
+  max_tokens: number;
+  system?: string;
+  messages: Array<{ role: "user" | "assistant"; content: string | Array<Record<string, unknown>> }>;
+  tools?: Array<{ name: string; description: string; input_schema: Record<string, unknown> }>;
+  temperature?: number;
+}
+
+export class OpenCodeGoProvider implements Provider {
+  readonly name = "opencode-go";
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+  private readonly defaultModel: string;
+
+  constructor(cfg: ProviderConfig) {
+    if (!cfg.apiKey) throw new Error("OpenCodeGoProvider requires apiKey");
+    this.apiKey = cfg.apiKey;
+    this.baseUrl = cfg.baseUrl ?? "https://api.opencode.ai";
+    this.defaultModel = cfg.model;
+  }
+
+  async *complete(messages: Message[], opts: CallOpts): AsyncIterable<StreamChunk> {
+    const systemParts: string[] = [];
+    const chatMessages: AnthropicRequest["messages"] = [];
+    for (const m of messages) {
+      if (m.role === "system") {
+        systemParts.push(typeof m.content === "string" ? m.content : m.content.map(b => b.type === "text" ? b.text : "").join(""));
+      } else {
+        chatMessages.push({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content as AnthropicRequest["messages"][number]["content"],
+        });
+      }
+    }
+
+    const body: AnthropicRequest = {
+      model: opts.model ?? this.defaultModel,
+      max_tokens: opts.maxTokens ?? 4096,
+      messages: chatMessages,
+    };
+    if (systemParts.length > 0) body.system = systemParts.join("\n\n");
+    if (opts.tools && opts.tools.length > 0) {
+      body.tools = opts.tools.map((t: Tool) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
+    }
+    if (opts.temperature !== undefined) body.temperature = opts.temperature;
+
+    const res = await fetch(`${this.baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`OpenCodeGo ${res.status}: ${text}`);
+    }
+
+    if (!res.body) {
+      yield { type: "done", usage: { in: 0, out: 0 } };
+      return;
+    }
+
+    let inTokens = 0;
+    let outTokens = 0;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const evt of events) {
+        const line = evt.split("\n").find(l => l.startsWith("data: ")) ?? "";
+        const data = line.slice(6).trim();
+        if (!data || data === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "message_start" && parsed.message?.usage) {
+            inTokens = parsed.message.usage.input_tokens ?? 0;
+          } else if (parsed.type === "message_delta" && parsed.usage) {
+            outTokens = parsed.usage.output_tokens ?? 0;
+          } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            yield { type: "token", text: parsed.delta.text ?? "" };
+          } else if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
+            yield { type: "tool_call", name: parsed.content_block.name, args: parsed.content_block.input };
+          }
+        } catch {
+          /* ignore malformed lines */
+        }
+      }
+    }
+
+    yield { type: "done", usage: { in: inTokens, out: outTokens } };
+  }
+}

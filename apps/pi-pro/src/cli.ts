@@ -4,6 +4,7 @@ import { resume } from "./commands/resume.js";
 import { replay } from "./commands/replay.js";
 import { merge } from "./commands/merge.js";
 import { doctor } from "./commands/doctor.js";
+import { config } from "./commands/config.js";
 
 export function main(): void {
   const program = new Command();
@@ -39,6 +40,11 @@ export function main(): void {
     .command("doctor")
     .description("check git, providers, and skills")
     .action(async () => doctor());
+
+  program
+    .command("config [action] [key] [value]")
+    .description("show or update pi-pro configuration")
+    .action(async (action?: string, key?: string, value?: string) => config(action, key, value));
 
   program.parseAsync(process.argv).catch(e => { console.error(e); process.exit(1); });
 }
