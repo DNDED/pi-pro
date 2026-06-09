@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Provider } from "@pi/provider";
-import { LlmWorker } from "@pi/subagent";
+import { LlmWorker, Role } from "@pi/subagent";
 import { createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool } from "@pi/tools";
 import { TASKS, BenchTask } from "../tasks/index.js";
 
@@ -40,6 +40,7 @@ export interface LlmBenchRunnerOpts {
   benchFixturesRel?: string;
   bootstrapDeps?: boolean;
   model?: string;
+  toolBudgets?: Partial<Record<Role, number>>;
 }
 
 const FIXTURES_REL_DEFAULT = "bench/fixtures";
@@ -142,6 +143,7 @@ export class LlmBenchRunner {
     const worker = new LlmWorker(this.provider, toolInstances, fixtureCopy, {
       maxIterations: this.opts.maxIterations ?? 12,
       model: this.opts.model,
+      toolBudgets: this.opts.toolBudgets,
     });
 
     let tokensIn = 0;

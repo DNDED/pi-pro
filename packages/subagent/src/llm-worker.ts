@@ -1,5 +1,6 @@
 import { Provider, Message, CallOpts, Tool as ProviderTool, StreamChunk } from "@pi/provider";
 import { StepContext, SubagentResult, Tool } from "./types.js";
+import { buildRoleSystemPrompt } from "./role-prompt.js";
 
 export interface ToolInstance {
   name: Tool;
@@ -12,9 +13,18 @@ export interface LlmWorkerOpts {
   maxIterations?: number;
   systemPromptPrefix?: string;
   model?: string;
+  toolBudget?: number;
+  toolBudgets?: Partial<Record<string, number>>;
 }
 
 const DEFAULT_MAX_ITERATIONS = 10;
+const DEFAULT_TOOL_BUDGET = 6;
+const DEFAULT_PER_ROLE_TOOL_BUDGETS: Record<string, number> = {
+  "build": 8,
+  "test-runner": 1,
+  "code-reviewer": 0,
+  "security-auditor": 4,
+};
 
 const JSON_STATUS_RE = /\{[\s\S]*?"status"\s*:\s*"(pass|fail|blocked)"[\s\S]*?\}/;
 
@@ -24,6 +34,8 @@ export class LlmWorker {
   private readonly model: string | undefined;
   private readonly toolMap: Map<string, ToolInstance>;
   private readonly toolList: ProviderTool[];
+  private readonly toolBudget: number | undefined;
+  private readonly toolBudgets: Partial<Record<string, number>>;
 
   constructor(
     private readonly provider: Provider,
@@ -34,6 +46,8 @@ export class LlmWorker {
     this.maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
     this.systemPromptPrefix = opts.systemPromptPrefix ?? "";
     this.model = opts.model;
+    this.toolBudget = opts.toolBudget;
+    this.toolBudgets = opts.toolBudgets ?? {};
     this.toolMap = new Map(tools.map(t => [t.name, t]));
     this.toolList = tools.map(t => ({
       name: t.name,
@@ -44,8 +58,12 @@ export class LlmWorker {
 
   async run(role: string, context: StepContext): Promise<SubagentResult> {
     const start = Date.now();
+    const roleDefault = DEFAULT_PER_ROLE_TOOL_BUDGETS[role];
+    const effectiveBudget = this.toolBudgets?.[role]
+      ?? this.toolBudget
+      ?? (roleDefault !== undefined ? roleDefault : DEFAULT_TOOL_BUDGET);
     const messages: Message[] = [
-      { role: "system", content: this.systemPrompt() },
+      { role: "system", content: this.systemPrompt(role) },
       { role: "user", content: this.userPrompt(role, context) },
     ];
     const opts: CallOpts = {
@@ -56,6 +74,7 @@ export class LlmWorker {
     let lastText = "";
     let tokensIn = 0;
     let tokensOut = 0;
+    let cumulativeTools = 0;
 
     for (let i = 0; i < this.maxIterations; i++) {
       const stream = this.provider.complete(messages, opts);
@@ -113,7 +132,27 @@ export class LlmWorker {
           }
         }
         messages.push({ role: "user", content: toolResultBlocks });
+        cumulativeTools += toolCalls.length;
         lastText = "";
+
+        if (cumulativeTools >= effectiveBudget * 2) {
+          return {
+            role: role as never,
+            stepId: context.stepId,
+            status: "blocked",
+            evidence: `Exceeded tool budget (${cumulativeTools} tool calls) without producing a status.`,
+            tokensIn, tokensOut,
+            durationMs: Date.now() - start,
+          };
+        }
+
+        if (cumulativeTools >= effectiveBudget) {
+          messages.push({
+            role: "user",
+            content: `You have used ${cumulativeTools} tools. If you have enough information to judge pass/fail/blocked, emit the final status JSON now (e.g. {"status":"pass","evidence":"..."}). If you need more tools, continue — but be concise.`,
+          });
+        }
+
         continue;
       }
 
@@ -130,8 +169,8 @@ export class LlmWorker {
     };
   }
 
-  private systemPrompt(): string {
-    return [
+  private systemPrompt(role: string): string {
+    const base = [
       this.systemPromptPrefix,
       "",
       "## Critical: how to finish",
@@ -147,6 +186,7 @@ export class LlmWorker {
       "",
       "Do NOT call any more tools after you have enough information to judge pass/fail/blocked. Do NOT explain your reasoning. Do NOT use markdown. Just the JSON object, exactly as shown above, on a single line.",
     ].filter(Boolean).join("\n");
+    return buildRoleSystemPrompt(role, base);
   }
 
   private userPrompt(role: string, ctx: StepContext): string {
