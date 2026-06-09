@@ -1,0 +1,27 @@
+{
+  "name": "@pi/tui-pro",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/theme.js",
+  "types": "./dist/theme.d.ts",
+  "exports": {
+    ".": "./dist/theme.js",
+    "./components/*": "./dist/components/*.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "ink": "^5.0.1",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "ink-testing-library": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

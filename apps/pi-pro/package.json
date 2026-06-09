@@ -1,0 +1,27 @@
+{
+  "name": "pi-pro",
+  "version": "0.1.0",
+  "description": "Improved coding agent on top of pi-mono",
+  "type": "module",
+  "bin": { "pi-pro": "./bin/pi-pro" },
+  "files": ["bin", "dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo 'no app tests; package tests cover behavior' && exit 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@pi/skill-bundle": "workspace:*",
+    "@pi/checkpoint": "workspace:*",
+    "@pi/memory": "workspace:*",
+    "@pi/tasks": "workspace:*",
+    "@pi/subagent": "workspace:*",
+    "@pi/tui-pro": "workspace:*",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
