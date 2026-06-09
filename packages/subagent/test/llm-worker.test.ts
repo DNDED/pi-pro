@@ -137,4 +137,111 @@ describe("LlmWorker", () => {
     expect(r.status).toBe("blocked");
     expect(r.evidence).toMatch(/iterations|limit/i);
   });
+
+  it("force-concludes at tool budget: 6 tool calls without a status, then the model emits pass/fail (not blocked)", async () => {
+    const p = new FakeProvider();
+    for (let i = 0; i < 5; i++) {
+      p.queue([
+        { type: "tool_call", name: "bash", args: { cmd: `echo step${i}` } },
+        { type: "done", usage: { in: 0, out: 0 } },
+      ]);
+    }
+    p.queue([
+      { type: "tool_call", name: "bash", args: { cmd: "echo final" } },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "all done"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir, { toolBudget: 6 });
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+    expect(r.evidence).toContain("all done");
+    const allMessages = p.captured.flatMap(c => c.messages);
+    const forceConcludeMsg = allMessages.find(m =>
+      typeof m.content === "string" && m.content.includes("You have used") && m.content.includes("tools"),
+    );
+    expect(forceConcludeMsg).toBeDefined();
+  });
+
+  it("double-budget hard-stop: 12 tool calls without a status yields blocked with the budget message", async () => {
+    const p = new FakeProvider();
+    for (let i = 0; i < 7; i++) {
+      p.queue([
+        { type: "tool_call", name: "bash", args: { cmd: `echo a${i}` } },
+        { type: "tool_call", name: "bash", args: { cmd: `echo b${i}` } },
+        { type: "done", usage: { in: 0, out: 0 } },
+      ]);
+    }
+    const w = new LlmWorker(p, [createBashTool()], workdir, { toolBudget: 6, maxIterations: 10 });
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("blocked");
+    expect(r.evidence).toMatch(/tool budget/i);
+  });
+
+  it("force-conclude message is in the messages array sent to the model after the budget threshold", async () => {
+    const p = new FakeProvider();
+    for (let i = 0; i < 7; i++) {
+      p.queue([
+        { type: "tool_call", name: "bash", args: { cmd: `echo step${i}` } },
+        { type: "done", usage: { in: 0, out: 0 } },
+      ]);
+    }
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "judged from context"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir, { toolBudget: 6 });
+    await w.run("build", ctx());
+    const allMessages = p.captured.flatMap(c => c.messages);
+    const forceConcludeMsg = allMessages.find(m =>
+      typeof m.content === "string" && m.content.includes("You have used") && m.content.includes("tools"),
+    );
+    expect(forceConcludeMsg).toBeDefined();
+  });
+
+  it("applies default per-role tool budgets: test-runner budget=1 triggers force-conclude after 1 tool call", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "tool_call", name: "bash", args: { cmd: "echo a" } },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "ok"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool(), createReadTool()], workdir);
+    const r = await w.run("test-runner", ctx());
+    expect(r.status).toBe("pass");
+    const allMessages = p.captured.flatMap(c => c.messages);
+    const forceConcludeMsg = allMessages.find(m =>
+      typeof m.content === "string" && m.content.includes("You have used 1 tools"),
+    );
+    expect(forceConcludeMsg).toBeDefined();
+  });
+
+  it("per-role override via toolBudgets wins over the global toolBudget", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "tool_call", name: "bash", args: { cmd: "echo a" } },
+      { type: "tool_call", name: "bash", args: { cmd: "echo b" } },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "ok"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir, {
+      toolBudget: 100,
+      toolBudgets: { build: 2 },
+    });
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+    const allMessages = p.captured.flatMap(c => c.messages);
+    const forceConcludeMsg = allMessages.find(m =>
+      typeof m.content === "string" && m.content.includes("You have used 2 tools"),
+    );
+    expect(forceConcludeMsg).toBeDefined();
+  });
 });
