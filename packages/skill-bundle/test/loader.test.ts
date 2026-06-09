@@ -37,6 +37,48 @@ describe("skill-bundle loader", () => {
   });
 });
 
+describe("skill-bundle shipped skills", () => {
+  // Pin the shipped set: every SKILL.md must exist, have a name in its YAML frontmatter,
+  // and a non-trivial body. This catches drift if a skill is added/removed/emptied.
+
+  const EXPECTED_SKILLS = [
+    "brainstorming",
+    "dispatching-parallel-agents",
+    "executing-plans",
+    "finishing-a-development-branch",
+    "receiving-code-review",
+    "requesting-code-review",
+    "subagent-driven-development",
+    "systematic-debugging",
+    "test-driven-development",
+    "using-git-worktrees",
+    "using-superpowers",
+    "verification-before-completion",
+    "writing-plans",
+    "writing-skills",
+  ];
+
+  it("ships exactly the expected set of 14 skills", async () => {
+    const skills = await listSkills();
+    const names = skills.map(s => s.name).sort();
+    expect(names).toEqual([...EXPECTED_SKILLS].sort());
+  });
+
+  for (const name of EXPECTED_SKILLS) {
+    it(`skill "${name}" exists in the bundle`, async () => {
+      const skills = await listSkills();
+      expect(skills.find(s => s.name === name)).toBeDefined();
+    });
+
+    it(`skill "${name}" loads a non-empty body`, async () => {
+      const skill = await loadSkill(name);
+      expect(skill).not.toBeNull();
+      expect(skill!.name).toBe(name);
+      expect(skill!.body.length).toBeGreaterThan(10);
+    });
+  }
+});
+
 async function mkFixture(): Promise<string> {
   const root = join(tmpdir(), `pi-pro-test-${Date.now()}`);
   await mkdir(root, { recursive: true });

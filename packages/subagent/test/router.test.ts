@@ -91,4 +91,34 @@ describe("@pi/subagent", () => {
     const res = await w.run("build", ctx, "ignored");
     expect(res.status).toBe("pass");
   });
+
+  it("StubWorker returns the same role it was called with", async () => {
+    const w = new StubWorker();
+    for (const role of ["build", "test-runner", "code-reviewer", "security-auditor"] as const) {
+      const res = await w.run(role, ctx, "ignored");
+      expect(res.role).toBe(role);
+    }
+  });
+
+  it("StubWorker returns the right stepId from the context", async () => {
+    const w = new StubWorker();
+    const customCtx: StepContext = { ...ctx, stepId: "step-42" };
+    const res = await w.run("build", customCtx, "ignored");
+    expect(res.stepId).toBe("step-42");
+  });
+
+  it("StubWorker returns a non-negative durationMs", async () => {
+    const w = new StubWorker();
+    const res = await w.run("build", ctx, "ignored");
+    expect(typeof res.durationMs).toBe("number");
+    expect(res.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("StubWorker ignores the prompt argument (does not embed it in evidence)", async () => {
+    const w = new StubWorker();
+    const secretPrompt = "this should never appear in evidence: AKIAIOSFODNN7EXAMPLE";
+    const res = await w.run("build", ctx, secretPrompt);
+    expect(res.evidence).not.toContain(secretPrompt);
+    expect(res.evidence).not.toContain("AKIAIOSFODNN7EXAMPLE");
+  });
 });
