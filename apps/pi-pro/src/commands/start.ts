@@ -2,14 +2,8 @@ import { CheckpointStore } from "@pi/checkpoint";
 import { SessionMemory } from "@pi/memory";
 import { TaskRunner, SessionLog, WorktreeStore, Plan } from "@pi/tasks";
 
-export async function start(taskDescription: string = "interactive session"): Promise<void> {
-  const checkpoint = new CheckpointStore();
-  const memory = new SessionMemory();
-  const log = new SessionLog();
-  const worktree = new WorktreeStore();
-
-  const taskId = checkpoint.newTaskId();
-  const plan: Plan = {
+export function buildPlan(taskId: string, taskDescription: string): Plan {
+  return {
     taskId,
     title: taskDescription,
     steps: [
@@ -21,6 +15,20 @@ export async function start(taskDescription: string = "interactive session"): Pr
       { id: "summarize", description: "write PR description",             done: false },
     ],
   };
+}
+
+export function formatCompletionMessage(taskId: string, _plan: Plan, _worktreePath: string): string {
+  return `✓ pi-pro: task ${taskId} completed. Run 'pi-pro replay ${taskId}' to inspect.`;
+}
+
+export async function start(taskDescription: string = "interactive session"): Promise<void> {
+  const checkpoint = new CheckpointStore();
+  const memory = new SessionMemory();
+  const log = new SessionLog();
+  const worktree = new WorktreeStore();
+
+  const taskId = checkpoint.newTaskId();
+  const plan = buildPlan(taskId, taskDescription);
 
   const runner = new TaskRunner(taskId, plan, { checkpoint, memory, log, worktree });
   await runner.intake();
@@ -34,5 +42,5 @@ export async function start(taskDescription: string = "interactive session"): Pr
   await runner.summarize(`Plan complete for: ${taskDescription}`);
   await runner.markStepDone("summarize");
 
-  console.log(`✓ pi-pro: task ${taskId} completed. Run 'pi-pro replay ${taskId}' to inspect.`);
+  console.log(formatCompletionMessage(taskId, plan, ""));
 }
