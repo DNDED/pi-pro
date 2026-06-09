@@ -91,6 +91,14 @@ class OpenAICompatProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    // Accumulator for streaming tool_call deltas. OpenAI's
+    // tool_calls stream sends `tc.function.name` only on the first
+    // delta and `tc.function.arguments` as a partial JSON string
+    // across multiple deltas. We must concatenate arguments and
+    // JSON.parse once when the tool call finishes (detected when
+    // finish_reason === "tool_calls" on a delta with no tool_calls
+    // payload, or when [DONE] is received).
+    const toolAcc = new Map<number, { id: string; name: string; argsBuf: string; yielded: boolean }>();
 
     while (true) {
       const { value, done } = await reader.read();
@@ -101,15 +109,51 @@ class OpenAICompatProvider implements Provider {
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const data = line.slice(6).trim();
-        if (!data || data === "[DONE]") continue;
+        if (!data || data === "[DONE]") {
+          // flush any incomplete tool calls on [DONE]
+          for (const [, acc] of toolAcc) {
+            if (!acc.yielded) {
+              let args: unknown = {};
+              if (acc.argsBuf) {
+                try { args = JSON.parse(acc.argsBuf); } catch { args = {}; }
+              }
+              yield { type: "tool_call", id: acc.id, name: acc.name, args };
+              acc.yielded = true;
+            }
+          }
+          continue;
+        }
         try {
           const parsed = JSON.parse(data);
           if (parsed.choices?.[0]?.delta?.content) {
             yield { type: "token", text: parsed.choices[0].delta.content };
           }
-          if (parsed.choices?.[0]?.delta?.tool_calls?.[0]) {
-            const tc = parsed.choices[0].delta.tool_calls[0];
-            yield { type: "tool_call", id: tc.id ?? `tc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name: tc.function?.name ?? "unknown", args: tc.function?.arguments ? JSON.parse(tc.function.arguments) : {} };
+          const tcs = parsed.choices?.[0]?.delta?.tool_calls;
+          if (tcs && tcs.length > 0) {
+            for (const tc of tcs) {
+              const idx = tc.index ?? 0;
+              let acc = toolAcc.get(idx);
+              if (!acc) {
+                acc = { id: "", name: "unknown", argsBuf: "", yielded: false };
+                toolAcc.set(idx, acc);
+              }
+              if (tc.id) acc.id = tc.id;
+              if (tc.function?.name) acc.name = tc.function.name;
+              if (tc.function?.arguments) acc.argsBuf += tc.function.arguments;
+            }
+          }
+          const finish = parsed.choices?.[0]?.finish_reason;
+          if (finish === "tool_calls" || finish === "stop") {
+            for (const [, acc] of toolAcc) {
+              if (!acc.yielded && (acc.id || acc.argsBuf)) {
+                let args: unknown = {};
+                if (acc.argsBuf) {
+                  try { args = JSON.parse(acc.argsBuf); } catch { args = {}; }
+                }
+                yield { type: "tool_call", id: acc.id, name: acc.name, args };
+                acc.yielded = true;
+              }
+            }
           }
           if (parsed.usage) {
             inTokens = parsed.usage.prompt_tokens ?? inTokens;

@@ -87,6 +87,13 @@ export class AnthropicProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    // Accumulator for streaming tool_use blocks. Anthropic sends
+    // `content_block_start` with `input: {}` followed by one or more
+    // `content_block_delta` events with `input_json_delta` partial
+    // chunks, and a final `content_block_stop`. We must concatenate
+    // the partials and JSON.parse once on stop — never trust the
+    // initial empty `input` field.
+    const toolBlocks = new Map<number, { id: string; name: string; inputJson: string }>();
 
     while (true) {
       const { value, done } = await reader.read();
@@ -107,7 +114,27 @@ export class AnthropicProvider implements Provider {
           } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
             yield { type: "token", text: parsed.delta.text ?? "" };
           } else if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
-            yield { type: "tool_call", id: parsed.content_block.id, name: parsed.content_block.name, args: parsed.content_block.input };
+            const blockIdx = parsed.index ?? 0;
+            toolBlocks.set(blockIdx, {
+              id: parsed.content_block.id,
+              name: parsed.content_block.name,
+              inputJson: "",
+            });
+          } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
+            const blockIdx = parsed.index ?? 0;
+            const block = toolBlocks.get(blockIdx);
+            if (block) block.inputJson += parsed.delta.partial_json ?? "";
+          } else if (parsed.type === "content_block_stop") {
+            const blockIdx = parsed.index ?? 0;
+            const block = toolBlocks.get(blockIdx);
+            if (block) {
+              let args: unknown = {};
+              if (block.inputJson) {
+                try { args = JSON.parse(block.inputJson); } catch { args = {}; }
+              }
+              yield { type: "tool_call", id: block.id, name: block.name, args };
+              toolBlocks.delete(blockIdx);
+            }
           }
         } catch { /* ignore */ }
       }
