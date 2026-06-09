@@ -97,12 +97,12 @@ export async function main(): Promise<void> {
     }
   }
   const completed = results.filter(r => r.completed).length;
+  const skipped = results.filter(r => r.skipped).length;
   const rate = results.length > 0 ? (completed / results.length) * 100 : 0;
-  console.log(`\nBaseline eval: ${completed}/${results.length} one-shot (${rate.toFixed(0)}%)\n`);
-  console.log("NOTE: this is the BASELINE — the bench runs each task's fixture");
-  console.log("test command, not the LLM-driven fix. The LLM-driven eval will");
-  console.log("replace this stub with: 1) spawn LlmWorker per task, 2) apply");
-  console.log("the LLM's edits, 3) re-run the test command.");
+  console.log(`\nBaseline eval: ${completed}/${results.length} one-shot (${rate.toFixed(0)}%), ${skipped} skipped\n`);
+  console.log("NOTE: this is the BASELINE runner — it just runs each fixture's");
+  console.log("test command without any LLM. For the real eval, use");
+  console.log("'pi-pro bench' which spawns an LLM worker per task.");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
