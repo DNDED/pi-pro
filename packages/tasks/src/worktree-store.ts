@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
@@ -9,6 +9,8 @@ export interface WorktreeInfo {
   branch: string;
   path: string;
 }
+
+const VALID_TASK_ID = /^tsk_[a-z0-9]{4,32}$/;
 
 export class WorktreeStore {
   constructor(private readonly rootDir: string = process.cwd()) {}
@@ -22,6 +24,9 @@ export class WorktreeStore {
   }
 
   create(taskId: string): WorktreeInfo {
+    if (!VALID_TASK_ID.test(taskId)) {
+      throw new Error(`Invalid taskId: must match ${VALID_TASK_ID.source}, got "${taskId}"`);
+    }
     const branch = this.branchName(taskId);
     const path = this.worktreePath(taskId);
     mkdirSync(join(this.rootDir, BASE), { recursive: true });
@@ -35,6 +40,9 @@ export class WorktreeStore {
   }
 
   remove(taskId: string): void {
+    if (!VALID_TASK_ID.test(taskId)) {
+      throw new Error(`Invalid taskId: must match ${VALID_TASK_ID.source}, got "${taskId}"`);
+    }
     const path = this.worktreePath(taskId);
     if (!existsSync(path)) return;
     try {
@@ -51,10 +59,16 @@ export class WorktreeStore {
   }
 
   private run(args: string[]): string {
-    return execSync(`git ${args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")}`, {
+    const res = spawnSync("git", args, {
       cwd: this.rootDir,
       encoding: "utf8",
-    }).trim();
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (res.status !== 0) {
+      const errMsg = (res.stderr || res.stdout || "").trim();
+      throw new Error(`git ${args.join(" ")} failed: ${errMsg}`);
+    }
+    return (res.stdout || "").trim();
   }
 }
 

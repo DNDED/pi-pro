@@ -43,10 +43,11 @@ export class StateMachine {
     return plan.steps[this.stepIndex] ?? null;
   }
 
-  markStepDone(stepId: string, plan: Plan): void {
-    const step = plan.steps.find(s => s.id === stepId);
-    if (!step) throw new Error(`Unknown step: ${stepId}`);
-    step.done = true;
+  markStepDone(stepId: string, plan: Plan): Plan {
+    const idx = plan.steps.findIndex(s => s.id === stepId);
+    if (idx === -1) throw new Error(`Unknown step: ${stepId}`);
+    const newSteps = plan.steps.map((s, i) => i === idx ? { ...s, done: true } : s);
+    return { ...plan, steps: newSteps };
   }
 
   isComplete(plan: Plan): boolean {
