@@ -1,6 +1,6 @@
 {
   "name": "@pi/skill-bundle",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Curated skills for pi-pro",
   "type": "module",
   "main": "./dist/loader.js",
@@ -11,7 +11,9 @@
   "files": [
     "dist",
     "skills",
-    "prompt.md"
+    "prompt.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
