@@ -77,3 +77,8 @@ export { parsePorcelain, parsePorcelainLine, formatStatusIcons, summarizeGitStat
 export type { GitFile, GitFileStatus, GitStatusIcons, GitStatusSummary } from "./util/git-status.js";
 export { detectRuntime, detectRuntimes, formatRuntime } from "./util/runtime-detect.js";
 export type { RuntimeInfo } from "./util/runtime-detect.js";
+export { detectNerdFonts, detectNerdFontsFromEnv } from "./util/nerd-fonts.js";
+export { StarshipFooter } from "./components/StarshipFooter.js";
+export type { StarshipFooterProps } from "./components/StarshipFooter.js";
+export { EditorFrame } from "./components/EditorFrame.js";
+export type { EditorFrameProps } from "./components/EditorFrame.js";
