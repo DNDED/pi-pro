@@ -17,12 +17,18 @@
   },
   "dependencies": {
     "@pi/bench": "workspace:*",
+    "@pi/cache": "workspace:*",
+    "@pi/context-manager": "workspace:*",
+    "@pi/embeddings": "workspace:*",
+    "@pi/memory-store": "workspace:*",
     "@pi/optimizer": "workspace:*",
     "@pi/provider": "workspace:*",
+    "@pi/repo-map": "workspace:*",
     "@pi/subagent": "workspace:*",
     "@pi/swarm": "workspace:*",
     "@pi/tasks": "workspace:*",
-    "@pi/tools": "workspace:*"
+    "@pi/tools": "workspace:*",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

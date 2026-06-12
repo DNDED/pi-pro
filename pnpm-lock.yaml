@@ -29,12 +29,27 @@ importers:
       '@pi/bench':
         specifier: workspace:*
         version: link:../../bench
+      '@pi/cache':
+        specifier: workspace:*
+        version: link:../../packages/cache
+      '@pi/context-manager':
+        specifier: workspace:*
+        version: link:../../packages/context-manager
+      '@pi/embeddings':
+        specifier: workspace:*
+        version: link:../../packages/embeddings
+      '@pi/memory-store':
+        specifier: workspace:*
+        version: link:../../packages/memory-store
       '@pi/optimizer':
         specifier: workspace:*
         version: link:../../packages/optimizer
       '@pi/provider':
         specifier: workspace:*
         version: link:../../packages/provider
+      '@pi/repo-map':
+        specifier: workspace:*
+        version: link:../../packages/repo-map
       '@pi/subagent':
         specifier: workspace:*
         version: link:../../packages/subagent
@@ -47,6 +62,9 @@ importers:
       '@pi/tools':
         specifier: workspace:*
         version: link:../../packages/tools
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

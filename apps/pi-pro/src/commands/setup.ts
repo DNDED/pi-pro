@@ -200,6 +200,12 @@ export async function interactive(): Promise<void> {
   console.log("    :multica <n> <t>   named agent");
   console.log("    :doctor            check system");
   console.log("    :config            show config");
+  console.log("    /btw <question>    v0.7.0 side question (no main history)");
+  console.log("    /context           v0.7.0 context budget breakdown");
+  console.log("    /memory-add <txt>  v0.7.0 add to cross-session memory");
+  console.log("    /memory-search <q> v0.7.0 search memory");
+  console.log("    /memory-list       v0.7.0 list memory sources");
+  console.log("    /memory-forget <s> v0.7.0 delete by source");
   console.log("    :help              this menu");
   console.log("    :quit              exit");
   console.log();
@@ -231,6 +237,12 @@ export async function interactive(): Promise<void> {
           console.log("  :search <q>       single researcher");
           console.log("  :audit            security + code review");
           console.log("  :review           code review");
+          console.log("  /btw <q>          side question (no main history pollution)");
+          console.log("  /context          context budget breakdown");
+          console.log("  /memory-add <t>   add to cross-session memory");
+          console.log("  /memory-search <q> search memory");
+          console.log("  /memory-list      list memory sources");
+          console.log("  /memory-forget <s> delete by source");
           console.log("  :help             this menu");
           console.log("  :quit             exit");
         } else if (cmd === ":doctor") {
@@ -275,6 +287,65 @@ export async function interactive(): Promise<void> {
         } else if (cmd === ":review") {
           const { swarmReview } = await import("./swarm.js");
           await swarmReview();
+        } else if (cmd.startsWith("/btw ")) {
+          const question = cmd.slice(5);
+          try {
+            const { loadConfig, getApiKey, createProvider } = await import("@pi/provider");
+            const { btw } = await import("./btw.js");
+            const cfgC = await loadConfig(PI_CONFIG_PATH).catch(() => null);
+            if (!cfgC) { console.log("  ✗ no config; run setup first"); rl.prompt(); return; }
+            const keyC = await getApiKey(cfgC.provider, PI_AUTH_PATH).catch(() => undefined);
+            if (!keyC) { console.log(`  ✗ no API key for ${cfgC.provider}`); rl.prompt(); return; }
+            const providerC = createProvider({ defaultModel: cfgC.model, baseUrl: cfgC.baseUrl, apiKey: keyC });
+            const answer = await btw(question, { provider: providerC, model: cfgC.model });
+            console.log(`  ${answer}`);
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
+        } else if (cmd === "/context") {
+          try {
+            const { formatContextStats, contextStats } = await import("./btw.js");
+            const stats = await contextStats({});
+            console.log(formatContextStats(stats));
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
+        } else if (cmd.startsWith("/memory-add ")) {
+          const text = cmd.slice(12);
+          try {
+            const memory = await import("./memory.js");
+            const { id, source } = await memory.memoryAdd(text);
+            console.log(`  ✓ added id=${id} source=${source}`);
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
+        } else if (cmd.startsWith("/memory-search ")) {
+          const query = cmd.slice(15);
+          try {
+            const memory = await import("./memory.js");
+            const results = await memory.memorySearch(query);
+            console.log(memory.formatMemoryResults(results));
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
+        } else if (cmd === "/memory-list") {
+          try {
+            const memory = await import("./memory.js");
+            const sources = memory.memoryList();
+            if (sources.length === 0) console.log("  (no memory sources)");
+            else for (const s of sources) console.log(`  ${s.source}`);
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
+        } else if (cmd.startsWith("/memory-forget ")) {
+          const source = cmd.slice(15);
+          try {
+            const memory = await import("./memory.js");
+            const removed = memory.memoryForget(source);
+            console.log(`  ✓ forgot ${removed} chunk(s)`);
+          } catch (e) {
+            console.log(`  ✗ ${(e as Error).message}`);
+          }
         } else {
           // Treat as bare task
           const { start } = await import("./start.js");

@@ -22,6 +22,9 @@ function showHelp(): void {
   console.log("  pi config set <k> <v>       set config (model, provider, baseUrl)");
   console.log("  pi config set-key <provider> <key>   set API key");
   console.log("  pi --check                  show env + config");
+  console.log("  pi memory <add|search|list|forget|count>   v0.7.0 cross-session memory");
+  console.log("  pi btw \"<question>\"         v0.7.0 side question (no main history pollution)");
+  console.log("  pi context                  v0.7.0 context budget breakdown");
   console.log("");
   console.log("flags:");
   console.log("  --pipeline                  use 5-stage pipeline (same as `pi pipeline`)");
@@ -256,6 +259,78 @@ export async function run(): Promise<void> {
       concurrency: flags.concurrency ? parseInt(flags.concurrency, 10) : undefined,
       pipeline: !!flags.pipeline,
     });
+    return;
+  }
+
+  if (first === "memory") {
+    const memory = await import("./commands/memory.js");
+    const sub = argv[1];
+    const rest = argv.slice(2).join(" ");
+    if (sub === "add") {
+      if (!rest) { console.error("usage: pi memory add <text> [--role=fact|preference|decision|narrative] [--project=<p>]"); process.exit(1); }
+      const role = (rest.match(/--role=(\S+)/)?.[1] ?? "narrative") as "fact" | "preference" | "decision" | "code-symbol" | "narrative" | "transcript";
+      const project = rest.match(/--project=(\S+)/)?.[1];
+      const text = rest.replace(/--(role|project)=\S+/g, "").trim();
+      const { id, source } = await memory.memoryAdd(text, { role, project });
+      console.log(`  ✓ added id=${id} source=${source}`);
+      return;
+    }
+    if (sub === "search") {
+      if (!rest) { console.error("usage: pi memory search <query> [--k=N] [--project=<p>]"); process.exit(1); }
+      const k = parseInt(rest.match(/--k=(\d+)/)?.[1] ?? "5", 10);
+      const project = rest.match(/--project=(\S+)/)?.[1];
+      const query = rest.replace(/--(k|project)=\S+/g, "").trim();
+      const results = await memory.memorySearch(query, { k, project });
+      console.log(memory.formatMemoryResults(results));
+      return;
+    }
+    if (sub === "list") {
+      const project = argv[2] === "--project" ? argv[3] : undefined;
+      const sources = memory.memoryList({ project });
+      if (sources.length === 0) { console.log("  (no memory sources)"); return; }
+      for (const s of sources) console.log(`  ${s.source}`);
+      return;
+    }
+    if (sub === "forget") {
+      if (!argv[2]) { console.error("usage: pi memory forget <source>"); process.exit(1); }
+      const removed = memory.memoryForget(argv[2]);
+      console.log(`  ✓ forgot ${removed} chunk(s) from source=${argv[2]}`);
+      return;
+    }
+    if (sub === "count") {
+      const project = argv[2] === "--project" ? argv[3] : undefined;
+      const n = memory.memoryCount({ project });
+      console.log(`  ${n} chunk(s)${project ? ` in project=${project}` : ""}`);
+      return;
+    }
+    console.error("usage: pi memory <add|search|list|forget|count> [args]");
+    process.exit(1);
+  }
+
+  if (first === "btw") {
+    const question = argv.slice(1).join(" ");
+    if (!question) { console.error("usage: pi btw \"<question>\""); process.exit(1); }
+    const { loadConfig, getApiKey, createProvider } = await import("@pi/provider");
+    const { PI_CONFIG_PATH, PI_AUTH_PATH } = await import("./config-paths.js");
+    const cfg = await loadConfig(PI_CONFIG_PATH).catch(() => null);
+    if (!cfg) { console.error("✗ no config; run `pi setup` first"); process.exit(1); }
+    const key = await getApiKey(cfg.provider, PI_AUTH_PATH).catch(() => undefined);
+    if (!key) { console.error(`✗ no API key for ${cfg.provider}; run \`pi setup\``); process.exit(1); }
+    const provider = createProvider({
+      defaultModel: cfg.model,
+      baseUrl: cfg.baseUrl,
+      apiKey: key,
+    });
+    const { btw } = await import("./commands/btw.js");
+    const answer = await btw(question, { provider, model: cfg.model });
+    console.log(answer);
+    return;
+  }
+
+  if (first === "context") {
+    const { formatContextStats, contextStats } = await import("./commands/btw.js");
+    const stats = await contextStats({});
+    console.log(formatContextStats(stats));
     return;
   }
 
