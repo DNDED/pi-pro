@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme, formatCost, formatTokens } from "../theme.js";
+import type { ContextStats } from "@pi/context-manager";
+import { colorForState, formatBudgetLine } from "./ContextBudget.js";
 
 export interface FooterProps {
   workdir?: string;
@@ -21,6 +23,10 @@ export interface FooterProps {
   cacheHitRate?: number;
   /** v0.5.0: elapsed wall time. */
   elapsedMs?: number;
+  /** v0.7.0: context stats from ContextManager. */
+  contextStats?: ContextStats | null;
+  /** v0.7.0: max context tokens for the budget bar. */
+  contextMaxTokens?: number;
 }
 
 function formatElapsed(ms: number): string {
@@ -46,9 +52,13 @@ export function Footer({
   costUsd = 0,
   cacheHitRate,
   elapsedMs = 0,
+  contextStats = null,
+  contextMaxTokens,
 }: FooterProps) {
   const showCost = connected && (tokensIn > 0 || tokensOut > 0 || costUsd > 0);
   const costStr = costUsd > 0 ? formatCost(costUsd) : "$0.00";
+  const showContext = connected && contextStats !== null;
+  const ctxColor = showContext ? colorForState(contextStats!.state) : theme.textMuted;
   return (
     <Box justifyContent="space-between" paddingX={2}>
       <Box>
@@ -80,6 +90,10 @@ export function Footer({
             tok:{formatTokens(tokensIn)}↗/{formatTokens(tokensOut)}↘  {costStr}
             {cacheHitRate !== undefined && cacheHitRate > 0 ? `  cache:${Math.round(cacheHitRate * 100)}%` : ""}
             {elapsedMs > 0 ? `  ${formatElapsed(elapsedMs)}` : ""}  </Text>
+        ) : null}
+        {showContext ? (
+          <Text color={ctxColor}>
+            {formatBudgetLine(contextStats!, contextMaxTokens)}  </Text>
         ) : null}
         {tab ? <Text color={theme.textMuted}>{tab}  </Text> : null}
         <Text color={theme.textMuted}>

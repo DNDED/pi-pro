@@ -6,6 +6,12 @@ export { CostTracker, formatStatusLine, formatCostBreakdown } from "./cost-displ
 export type { CostTrackerState, FormatStatusLineOpts, CostBreakdownOpts } from "./cost-display.js";
 export { SwarmPanel, formatSwarmStateLine, colorForRole, colorForStatus, colorForBudget } from "./components/SwarmPanel.js";
 export type { SwarmPanelProps } from "./components/SwarmPanel.js";
+export { ContextBudget, colorForState, colorHex, buildBar, formatBudgetLine } from "./components/ContextBudget.js";
+export type { ContextBudgetProps, ContextBudgetColor } from "./components/ContextBudget.js";
+export { BtwPrompt } from "./components/BtwPrompt.js";
+export type { BtwPromptProps } from "./components/BtwPrompt.js";
+export { ContextBreakdown, buildCategories } from "./components/ContextBreakdown.js";
+export type { ContextBreakdownProps, ContextCategory } from "./components/ContextBreakdown.js";
 export { HomeScreen } from "./components/HomeScreen.js";
 export type { HomeScreenProps } from "./components/HomeScreen.js";
 export { SessionScreen } from "./components/SessionScreen.js";

@@ -340,6 +340,9 @@ importers:
 
   packages/tui-pro:
     dependencies:
+      '@pi/context-manager':
+        specifier: workspace:*
+        version: link:../context-manager
       '@pi/provider':
         specifier: workspace:*
         version: link:../provider
