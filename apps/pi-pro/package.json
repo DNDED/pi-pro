@@ -18,6 +18,7 @@
   "dependencies": {
     "@pi/bench": "workspace:*",
     "@pi/cache": "workspace:*",
+    "@pi/config": "workspace:*",
     "@pi/context-manager": "workspace:*",
     "@pi/embeddings": "workspace:*",
     "@pi/memory-store": "workspace:*",
