@@ -69,3 +69,7 @@ export { PlanModeWidget } from "./extensions/PlanModeWidget.js";
 export type { PlanModeWidgetProps } from "./extensions/PlanModeWidget.js";
 export { getModeDisplay } from "./util/agent-mode.js";
 export type { AgentModeDisplay } from "./util/agent-mode.js";
+export { INITIAL_TODO_STATE, listTodos, addTodo, toggleTodo, clearTodos, countProgress as todoCountProgress } from "./extensions/todo-state.js";
+export type { Todo, TodoState } from "./extensions/todo-state.js";
+export { TodoList } from "./extensions/TodoList.js";
+export type { TodoListProps } from "./extensions/TodoList.js";
