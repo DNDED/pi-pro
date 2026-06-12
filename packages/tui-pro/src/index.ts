@@ -73,3 +73,5 @@ export { INITIAL_TODO_STATE, listTodos, addTodo, toggleTodo, clearTodos, countPr
 export type { Todo, TodoState } from "./extensions/todo-state.js";
 export { TodoList } from "./extensions/TodoList.js";
 export type { TodoListProps } from "./extensions/TodoList.js";
+export { parsePorcelain, parsePorcelainLine, formatStatusIcons, summarizeGitStatus, NERD_FONT_ICONS, ASCII_ICONS } from "./util/git-status.js";
+export type { GitFile, GitFileStatus, GitStatusIcons, GitStatusSummary } from "./util/git-status.js";
