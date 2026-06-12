@@ -157,4 +157,80 @@ describe("LlmWorker — v0.7.0 ContextManager integration", () => {
     const totalTokens = cm.recordUsageCalls.reduce((s, u) => s + u.tokens, 0);
     expect(totalTokens).toBe(100 + 80 + 50 + 30);
   });
+
+  it("getLastTurnUsage returns null before any run()", () => {
+    const provider = new FakeProvider();
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model" });
+    expect(worker.getLastTurnUsage()).toBeNull();
+  });
+
+  it("getLastTurnUsage returns the last LLM call's usage after run()", async () => {
+    const provider = new FakeProvider([{ tokensIn: 200, tokensOut: 100, costUsd: 0.005, text: '{"status":"pass","evidence":"x"}' }]);
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model" });
+    await worker.run("build", makeContext());
+    const last = worker.getLastTurnUsage();
+    expect(last).not.toBeNull();
+    expect(last!.tokensIn).toBe(200);
+    expect(last!.tokensOut).toBe(100);
+    expect(last!.costUsd).toBe(0.005);
+    expect(last!.turnNumber).toBe(1);
+    expect(last!.toolCalls).toBe(0);
+  });
+
+  it("getLastTurnUsage updates per iteration in multi-turn run()", async () => {
+    const provider = new FakeProvider([
+      { tokensIn: 100, tokensOut: 50, costUsd: 0.001, text: "<thinking>" + "x".repeat(2000) + "</thinking>" },
+      { tokensIn: 80, tokensOut: 30, costUsd: 0.002, text: '{"status":"pass","evidence":"done"}' },
+    ]);
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model", maxIterations: 5 });
+    await worker.run("build", makeContext());
+    const last = worker.getLastTurnUsage();
+    expect(last).not.toBeNull();
+    expect(last!.tokensIn).toBe(80);
+    expect(last!.tokensOut).toBe(30);
+    expect(last!.costUsd).toBe(0.002);
+    expect(last!.turnNumber).toBe(2);
+  });
+
+  it("getDeltaSinceLastRun returns null on first run()", async () => {
+    const provider = new FakeProvider([{ tokensIn: 100, tokensOut: 50, text: '{"status":"pass","evidence":"x"}' }]);
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model" });
+    expect(worker.getDeltaSinceLastRun()).toBeNull();
+    await worker.run("build", makeContext());
+    expect(worker.getDeltaSinceLastRun()).toBeNull();
+  });
+
+  it("getDeltaSinceLastRun returns delta on second run()", async () => {
+    const provider = new FakeProvider([
+      { tokensIn: 100, tokensOut: 50, costUsd: 0.001, text: '{"status":"pass","evidence":"first"}' },
+      { tokensIn: 200, tokensOut: 100, costUsd: 0.002, text: '{"status":"pass","evidence":"second"}' },
+    ]);
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model" });
+    await worker.run("build", makeContext());
+    await worker.run("build", makeContext());
+    const delta = worker.getDeltaSinceLastRun();
+    expect(delta).not.toBeNull();
+    expect(delta!.tokensIn).toBe(200);
+    expect(delta!.tokensOut).toBe(100);
+    expect(delta!.costUsd).toBe(0.002);
+    expect(delta!.turns).toBe(1);
+  });
+
+  it("getDeltaSinceLastRun returns the last run's tokens (not cumulative)", async () => {
+    const provider = new FakeProvider([
+      { tokensIn: 100, tokensOut: 50, costUsd: 0.001, text: '{"status":"pass","evidence":"r1"}' },
+      { tokensIn: 200, tokensOut: 100, costUsd: 0.002, text: '{"status":"pass","evidence":"r2"}' },
+      { tokensIn: 300, tokensOut: 150, costUsd: 0.003, text: '{"status":"pass","evidence":"r3"}' },
+    ]);
+    const worker = new LlmWorker(provider, makeTools(), "/tmp", { model: "fake-model" });
+    await worker.run("build", makeContext());
+    await worker.run("build", makeContext());
+    await worker.run("build", makeContext());
+    const delta = worker.getDeltaSinceLastRun();
+    expect(delta).not.toBeNull();
+    expect(delta!.tokensIn).toBe(300);
+    expect(delta!.tokensOut).toBe(150);
+    expect(delta!.costUsd).toBe(0.003);
+    expect(delta!.turns).toBe(1);
+  });
 });

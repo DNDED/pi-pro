@@ -4,6 +4,15 @@ import { theme, formatCost, formatTokens } from "../theme.js";
 import type { ContextStats } from "@pi/context-manager";
 import { colorForState, formatBudgetLine } from "./ContextBudget.js";
 
+export interface TurnDelta {
+  tokensIn: number;
+  tokensOut: number;
+  costUsd: number;
+  durationMs?: number;
+  turnNumber?: number;
+  toolCalls?: number;
+}
+
 export interface FooterProps {
   workdir?: string;
   branch?: string;
@@ -27,6 +36,8 @@ export interface FooterProps {
   contextStats?: ContextStats | null;
   /** v0.7.0: max context tokens for the budget bar. */
   contextMaxTokens?: number;
+  /** v0.8.0: per-turn delta (last LLM call's usage). */
+  turnDelta?: TurnDelta | null;
 }
 
 function formatElapsed(ms: number): string {
@@ -35,6 +46,15 @@ function formatElapsed(ms: number): string {
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
   return `${m}m${s % 60}s`;
+}
+
+function formatDelta(d: TurnDelta): string {
+  const parts: string[] = [];
+  parts.push(`Δtok:${formatTokens(d.tokensIn)}↗/${formatTokens(d.tokensOut)}↘`);
+  if (d.costUsd > 0) parts.push(formatCost(d.costUsd));
+  if (d.toolCalls !== undefined && d.toolCalls > 0) parts.push(`${d.toolCalls}🔧`);
+  if (d.durationMs !== undefined && d.durationMs > 0) parts.push(formatElapsed(d.durationMs));
+  return parts.join(" ");
 }
 
 export function Footer({
@@ -54,11 +74,13 @@ export function Footer({
   elapsedMs = 0,
   contextStats = null,
   contextMaxTokens,
+  turnDelta = null,
 }: FooterProps) {
   const showCost = connected && (tokensIn > 0 || tokensOut > 0 || costUsd > 0);
   const costStr = costUsd > 0 ? formatCost(costUsd) : "$0.00";
   const showContext = connected && contextStats !== null;
   const ctxColor = showContext ? colorForState(contextStats!.state) : theme.textMuted;
+  const showTurn = connected && turnDelta !== null && (turnDelta.tokensIn > 0 || turnDelta.tokensOut > 0);
   return (
     <Box justifyContent="space-between" paddingX={2}>
       <Box>
@@ -85,6 +107,10 @@ export function Footer({
         )}
       </Box>
       <Box>
+        {showTurn ? (
+          <Text color={theme.accent}>
+            {formatDelta(turnDelta!)}  </Text>
+        ) : null}
         {showCost ? (
           <Text color={theme.textMuted}>
             tok:{formatTokens(tokensIn)}↗/{formatTokens(tokensOut)}↘  {costStr}

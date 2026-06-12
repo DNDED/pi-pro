@@ -64,6 +64,12 @@ export class LlmWorker {
   private totalCostUsd = 0;
   /** v0.5.0: per-session cache hit counter. */
   private totalCacheHits = 0;
+  /** v0.8.0: per-turn usage snapshot (set after each LLM call within run()). */
+  private lastTurnUsage: { tokensIn: number; tokensOut: number; costUsd: number; durationMs: number; toolCalls: number; turnNumber: number } | null = null;
+  /** v0.8.0: previous session-total snapshot for delta computation across run() calls. */
+  private prevRunTokensIn = 0;
+  private prevRunTokensOut = 0;
+  private prevRunCostUsd = 0;
 
   constructor(
     private readonly provider: Provider,
@@ -110,6 +116,32 @@ export class LlmWorker {
     return this.contextManager.runBtw(question);
   }
 
+  /** v0.8.0: per-turn usage snapshot (last LLM call within most recent run()).
+   *  Returns null if no run() has happened yet. */
+  getLastTurnUsage(): { tokensIn: number; tokensOut: number; costUsd: number; durationMs: number; toolCalls: number; turnNumber: number } | null {
+    return this.lastTurnUsage;
+  }
+
+  /** v0.8.0: delta since previous run() invocation (cross-run deltas).
+   *  Returns null until the second run() completes. */
+  getDeltaSinceLastRun(): { tokensIn: number; tokensOut: number; costUsd: number; turns: number } | null {
+    if (this.runCount < 2) return null;
+    return {
+      tokensIn: this.totalTokensIn - this.prevRunTokensIn,
+      tokensOut: this.totalTokensOut - this.prevRunTokensOut,
+      costUsd: this.totalCostUsd - this.prevRunCostUsd,
+      turns: this.turnCount - this.prevRunTurnCount,
+    };
+  }
+
+  /** v0.8.0: per-turn token totals (cumulative). */
+  private totalTokensIn = 0;
+  private totalTokensOut = 0;
+  private prevRunTurnCount = 0;
+  private turnCount = 0;
+  /** v0.8.0: number of run() invocations (for getDeltaSinceLastRun). */
+  private runCount = 0;
+
   async run(role: string, context: StepContext): Promise<SubagentResult> {
     const start = Date.now();
     const roleDefault = DEFAULT_PER_ROLE_TOOL_BUDGETS[role];
@@ -133,12 +165,20 @@ export class LlmWorker {
       tools: this.toolList,
     };
 
+    // v0.8.0: capture prev* snapshot for getDeltaSinceLastRun()
+    const tokensInAtStart = this.totalTokensIn;
+    const tokensOutAtStart = this.totalTokensOut;
+    const costAtStart = this.totalCostUsd;
+    const turnCountAtStart = this.turnCount;
+
     let lastText = "";
     let tokensIn = 0;
     let tokensOut = 0;
     let cumulativeTools = 0;
     let totalCost = 0;
+    let iterStart = Date.now();
 
+    try {
     for (let i = 0; i < this.maxIterations; i++) {
       // v0.5.0: wrap LLM call with optimizer if provided. The optimizer
       // applies cache hints (Anthropic breakpoints / OpenAI prefix) and
@@ -198,6 +238,8 @@ export class LlmWorker {
           }
           if (chunk.usage.costUsd !== undefined) {
             totalCost = this.totalCostUsd + chunk.usage.costUsd;
+            // v0.8.0: also accumulate from chunk-level costUsd for tests/no-optimizer
+            this.totalCostUsd += chunk.usage.costUsd;
           }
           // v0.7.0: record usage in context manager
           if (this.contextManager) {
@@ -206,6 +248,19 @@ export class LlmWorker {
               costUsd: chunk.usage.costUsd,
             });
           }
+          this.totalTokensIn += chunk.usage.in;
+          this.totalTokensOut += chunk.usage.out;
+          this.turnCount++;
+          // v0.8.0: snapshot this turn's usage for the per-turn display
+          this.lastTurnUsage = {
+            tokensIn: chunk.usage.in,
+            tokensOut: chunk.usage.out,
+            costUsd: chunk.usage.costUsd ?? 0,
+            durationMs: Date.now() - iterStart,
+            toolCalls: toolCalls.length,
+            turnNumber: this.turnCount,
+          };
+          iterStart = Date.now();
           doneSeen = true;
         }
       }
@@ -397,6 +452,13 @@ export class LlmWorker {
       tokensIn, tokensOut,
       durationMs: Date.now() - start,
     };
+    } finally {
+      this.prevRunTokensIn = tokensInAtStart;
+      this.prevRunTokensOut = tokensOutAtStart;
+      this.prevRunCostUsd = costAtStart;
+      this.prevRunTurnCount = turnCountAtStart;
+      this.runCount++;
+    }
   }
 
   private systemPrompt(role: string): string {

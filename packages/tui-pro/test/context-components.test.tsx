@@ -277,3 +277,86 @@ describe("Footer — context integration", () => {
     expect(lastFrame()).not.toContain("ctx:");
   });
 });
+
+describe("Footer — per-turn delta (v0.8.0)", () => {
+  it("does not show delta when turnDelta is null", () => {
+    const { lastFrame } = render(<Footer connected={true} turnDelta={null} />);
+    expect(lastFrame()).not.toContain("Δtok:");
+  });
+
+  it("shows delta when turnDelta provided", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 200, tokensOut: 100, costUsd: 0.005 }} />,
+    );
+    const out = lastFrame();
+    expect(out).toContain("Δtok:200↗/100↘");
+    expect(out).toContain("$0.01");
+  });
+
+  it("omits cost when 0", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 100, tokensOut: 50, costUsd: 0 }} />,
+    );
+    expect(lastFrame()).toContain("Δtok:100↗/50↘");
+    expect(lastFrame()).not.toContain("$0.00");
+  });
+
+  it("includes tool count when > 0", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 100, tokensOut: 50, costUsd: 0.001, toolCalls: 3 }} />,
+    );
+    expect(lastFrame()).toContain("3🔧");
+  });
+
+  it("omits tool count when 0 or undefined", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 100, tokensOut: 50, costUsd: 0.001 }} />,
+    );
+    expect(lastFrame()).not.toContain("🔧");
+  });
+
+  it("includes duration when provided", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 100, tokensOut: 50, costUsd: 0.001, durationMs: 1500 }} />,
+    );
+    expect(lastFrame()).toContain("1s");
+  });
+
+  it("formats duration in seconds and minutes", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 100, tokensOut: 50, costUsd: 0, durationMs: 90000 }} />,
+    );
+    expect(lastFrame()).toContain("1m30s");
+  });
+
+  it("uses K formatting for large token counts", () => {
+    const { lastFrame } = render(
+      <Footer connected={true} turnDelta={{ tokensIn: 1500, tokensOut: 500, costUsd: 0.01 }} />,
+    );
+    expect(lastFrame()).toContain("1.5K");
+  });
+
+  it("shows delta + cost + ctx together", () => {
+    const { lastFrame } = render(
+      <Footer
+        connected={true}
+        tokensIn={10000}
+        tokensOut={5000}
+        costUsd={0.5}
+        contextStats={mkStats({ totalTokens: 5000, budgetUsed: 0.5 })}
+        contextMaxTokens={10000}
+        turnDelta={{ tokensIn: 200, tokensOut: 100, costUsd: 0.005 }}
+      />,
+    );
+    const out = lastFrame();
+    expect(out).toContain("Δtok:200↗/100↘");
+    expect(out).toContain("tok:10.0K↗/5.0K↘");
+    expect(out).toContain("ctx:");
+    expect(out).toContain("50%");
+  });
+
+  it("back-compat: Footer without turnDelta prop works", () => {
+    const { lastFrame } = render(<Footer connected={true} />);
+    expect(lastFrame()).not.toContain("Δtok:");
+  });
+});

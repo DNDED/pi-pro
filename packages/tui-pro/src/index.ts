@@ -19,7 +19,7 @@ export type { SessionScreenProps } from "./components/SessionScreen.js";
 export { Sidebar } from "./components/Sidebar.js";
 export type { SidebarProps } from "./components/Sidebar.js";
 export { Footer } from "./components/Footer.js";
-export type { FooterProps } from "./components/Footer.js";
+export type { FooterProps, TurnDelta } from "./components/Footer.js";
 export { UserMessage } from "./components/UserMessage.js";
 export type { UserMessageProps } from "./components/UserMessage.js";
 export { AssistantMessage } from "./components/AssistantMessage.js";
