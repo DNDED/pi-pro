@@ -1,21 +1,21 @@
-# AGENTS.md — pi-pro (promyra)
+# AGENTS.md — pi-pro (pi-pro)
 
 This file is loaded by OpenCode when working in `/home/trader/Developer/pi-pro`. It overrides the global `~/.config/opencode/AGENTS.md` for this project.
 
 ## Project
 
-- **Name:** promyra
+- **Name:** pi-pro
 - **Type:** TypeScript fork of [pi-mono](https://github.com/earendil-works/pi) (Mario Zechner's minimal coding agent)
 - **Goal:** beat Claude Code and OpenCode on the same model via cost optimization, agent swarm, and better telemetry
 - **Repo:** `/home/trader/Developer/pi-pro`
-- **See:** `memory/projects/promyra.md` for full state, releases, architecture, files of interest
+- **See:** `memory/projects/pi-pro.md` for full state, releases, architecture, files of interest
 
 ## Memory (in-repo, not Obsidian)
 
 Memory for this project lives in `memory/` at the repo root — not in the global Obsidian vault. The Obsidian vault is for other projects (leadops, argent, etc.).
 
-- **Auto-recall (5 files at session start):** `memory/user.md`, `memory/projects/promyra.md`, `memory/decisions/v0.6.0.md` (+ `v0.5.0.md`), `memory/daily/YYYY-MM-DD.md`, `memory/sessions/index.md`
-- **Auto-store:** write durable facts immediately as they emerge (preferences → `user.md`; project state → `projects/promyra.md`; decisions → `decisions/v0.X.md`; narrative → `daily/YYYY-MM-DD.md`; task logs → `sessions/`)
+- **Auto-recall (5 files at session start):** `memory/user.md`, `memory/projects/pi-pro.md`, `memory/decisions/v0.6.0.md` (+ `v0.5.0.md`), `memory/daily/YYYY-MM-DD.md`, `memory/sessions/index.md`
+- **Auto-store:** write durable facts immediately as they emerge (preferences → `user.md`; project state → `projects/pi-pro.md`; decisions → `decisions/v0.X.md`; narrative → `daily/YYYY-MM-DD.md`; task logs → `sessions/`)
 - **Session end checklist:** 5-step gate before the final reply of any task
 - **Full rules:** `memory/AGENTS-rules.md` (HARD GATEs)
 
@@ -26,7 +26,7 @@ These gates mirror the global `~/.config/opencode/AGENTS.md` but are repeated he
 1. **Memory Auto-Recall** — read 5 files at session start. No questions before reading.
 2. **Memory Auto-Store** — write durable facts immediately. No waiting for Sid.
 3. **Session End Checklist** — walk 5 steps before the final reply of any task.
-4. **Project Auto-Detection** — if path is rooted in pi-pro, load `memory/projects/promyra.md` first.
+4. **Project Auto-Detection** — if path is rooted in pi-pro, load `memory/projects/pi-pro.md` first.
 5. **Brainstorming** — for new features, behavior changes, or "improve this" with no spec, brainstorm first. Spec → plan → build. Tuning known things and pure Q&A skip.
 6. **TDD** — write tests first, then implement minimal to pass, then refactor.
 7. **Conciseness** — no preamble, no postamble, no filler, no emojis.
@@ -49,15 +49,17 @@ These gates mirror the global `~/.config/opencode/AGENTS.md` but are repeated he
 
 ## Quick reference
 
-- `pnpm -r test` — run all tests (target: 749+ passing)
+- `pnpm -r test` — run all tests (target: 800+ passing)
 - `pnpm -r typecheck` — typecheck all packages (target: clean)
 - `pnpm -r build` — build all packages (target: 15+ clean)
-- `pnpm --filter @promyra/bench bench` — run the LLM bench
-- `pnpm --filter @promyra/bench bench --attribution` — run per-flag attribution (v0.5.0+)
+- `pnpm --filter @pi/bench bench` — run the LLM bench
+- `pnpm --filter @pi/bench bench --attribution` — run per-flag attribution (v0.5.0+)
 - `pi swarm "<goal>"` — run a v0.6.0 agent swarm (when shipped)
 - `pi swarm --plan "<goal>"` — show plan + roster first
 - `pi swarm --budget=<usd> "<goal>"` — override cost cap
 - `pi multica <name> "<task>"` — direct dispatch to a single subagent (Multica preserved from v0.4.0)
+- `pi /btw <question>` — side question (v0.7.0+)
+- `pi /context` — show context budget breakdown (v0.7.0+)
 
 ## Env flags (v0.5.0+)
 
@@ -66,5 +68,15 @@ These gates mirror the global `~/.config/opencode/AGENTS.md` but are repeated he
 - `PROMYRA_CASCADE=0` — disable cascade routing
 - `PROMYRA_PARALLEL_TOOLS=0` — disable parallel tool execution
 - `PROMYRA_TELEMETRY=0` — disable cost telemetry
+
+All default ON.
+
+## Env flags (v0.7.0+)
+
+- `PROMYRA_EMBEDDINGS=openai|anthropic|opencode-go|null` — override embeddings provider
+- `PROMYRA_COMPRESSION=extractive|llm|off` — compression strategy
+- `PROMYRA_MEMORY_QUERY_K=20` — memory chunks to inject per turn
+- `PROMYRA_SOFT_WARN=0.75` — soft-warn threshold (75% of context)
+- `PROMYRA_HARD_TRIGGER=0.90` — hard-trigger threshold (90% of context)
 
 All default ON.
