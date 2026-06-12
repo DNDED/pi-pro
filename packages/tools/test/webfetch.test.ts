@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createWebfetchTool } from "../src/webfetch.js";
 
-describe("@pi/tools/webfetch", () => {
+describe("@promyra/tools/webfetch", () => {
   it("fetches a data: URL and returns the body and status", async () => {
     const webfetch = createWebfetchTool();
     const result = await webfetch.execute({ url: "data:text/plain,hello%20world" });

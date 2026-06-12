@@ -7,14 +7,14 @@ import { createEditTool } from "../src/edit.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "pi-pro-edit-"));
+  workdir = await mkdtemp(join(tmpdir(), "promyra-edit-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@pi/tools/edit", () => {
+describe("@promyra/tools/edit", () => {
   it("replaces a unique string and reports the count", async () => {
     const p = join(workdir, "f.txt");
     await writeFile(p, "alpha\nbeta\ngamma\n", "utf8");

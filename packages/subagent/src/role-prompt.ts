@@ -2,14 +2,45 @@ import { Role } from "./types.js";
 
 const ROLE_CONTRACTS: Record<Role, string> = {
   "build": [
-    "## Task-completion contract (build)",
+    "## Ultrathink Method (build)",
     "",
-    "After you have applied your edits, run the test command (if available) using the bash tool.",
-    "If tests pass, emit pass.",
-    "If tests fail, emit fail with the test output.",
-    "If a tool you need is unavailable, emit blocked.",
+    "You MUST follow this methodology IN ORDER. Do not skip steps.",
     "",
-    "Do not exceed your tool budget. When prompted that you have used N tools, judge pass/fail/blocked from what you already know and emit the final status JSON.",
+    "### Step 1: ANALYZE",
+    "Read the relevant files. Understand what exists. Ask yourself:",
+    "- What is the current behavior?",
+    "- What does the test expect?",
+    "- What files do I need to change?",
+    "- Are there edge cases I'm missing?",
+    "",
+    "### Step 2: PLAN",
+    "Before writing ANY code, state your plan clearly:",
+    "- Files to create/modify:",
+    "- Changes to make in each file:",
+    "- Verification: how will I test my changes?",
+    "",
+    "### Step 3: EXECUTE",
+    "Implement exactly what you planned. Write clean, correct code.",
+    "After EACH edit, pause and ask: does this make the tests pass?",
+    "Run the test command after your changes.",
+    "",
+    "### Step 4: VERIFY & FIX",
+    "Run the test command. If tests FAIL:",
+    "- Read the failure output carefully",
+    "- Identify the EXACT line or assertion that failed",
+    "- Fix ONLY that specific issue",
+    "- Re-run the test",
+    "- Repeat until ALL tests pass OR you are blocked",
+    "",
+    "### Tool usage rules",
+    "Before calling a tool, explain WHY: 'I need [this] because [reason].'",
+    "After a tool result, interpret it: 'This tells me [X]. Next I will [Y].'",
+    "Never call a tool without a clear purpose.",
+    "",
+    "### When to stop",
+    "If all tests pass: emit {\"status\":\"pass\",\"evidence\":\"...\"}",
+    "If tests fail after 3+ attempts: emit {\"status\":\"fail\",\"evidence\":\"...\"} with the error",
+    "If you need a tool that doesn't exist: emit {\"status\":\"blocked\",\"evidence\":\"...\"}",
   ].join("\n"),
   "test-runner": [
     "## Task-completion contract (test-runner)",
@@ -33,6 +64,20 @@ const ROLE_CONTRACTS: Record<Role, string> = {
     "Emit pass if no issues, fail with exact file:line of any finding.",
     "Do not modify code.",
   ].join("\n"),
+  "planner": [
+    "## Task-completion contract (planner)",
+    "",
+    "Read relevant files. Produce a written implementation plan.",
+    "List files to modify, changes to make, verification steps.",
+    "Emit pass with plan details. Do not modify code.",
+  ].join("\n"),
+  "researcher": [
+    "## Task-completion contract (researcher)",
+    "",
+    "Read relevant files. Search and gather information.",
+    "Report findings clearly and concisely.",
+    "Emit pass with research findings. Do not modify code.",
+  ].join("\n"),
 };
 
 export function buildRoleSystemPrompt(role: string, baseSystemPrompt: string): string {
@@ -43,5 +88,5 @@ export function buildRoleSystemPrompt(role: string, baseSystemPrompt: string): s
 }
 
 function isKnownRole(role: string): role is Role {
-  return role === "build" || role === "test-runner" || role === "code-reviewer" || role === "security-auditor";
+  return role === "build" || role === "test-runner" || role === "code-reviewer" || role === "security-auditor" || role === "planner" || role === "researcher";
 }

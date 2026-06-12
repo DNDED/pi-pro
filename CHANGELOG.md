@@ -1,7 +1,135 @@
 # Changelog
 
-All notable changes to pi-pro are documented here. pi-pro adheres to
+All notable changes to promyra are documented here. promyra adheres to
 [Semantic Versioning](https://semver.org/).
+
+## v0.6.0 — Agent Swarm v1 (in progress)
+
+Targets vs v0.5.0:
+- **Pass rate:** ≥ v0.5.0 + 15pp
+- **Cost:** ≤ 1.5x of v0.5.0
+- **Wall:** ≤ 1.8x of v0.5.0
+
+### New package: `@promyra/swarm`
+
+Orchestrator + 5 subagents + file scratchpad + worktree management + verification gate + budget. 102 tests.
+
+| Module | Purpose |
+|---|---|
+| `types.ts` | SwarmId, SwarmRole, SwarmPhase, SwarmPlan, SwarmState, SubagentResult, BudgetState, TestResult, WorktreeRef, OrchestratorResult, OrchestratorOpts (branded + discriminated unions) |
+| `scratchpad.ts` | File-based shared state at `.promyra/swarm/<id>/`; atomic writes (temp + rename), JSON ops with merge semantics, path-safety validation |
+| `worktree-pool.ts` | Per-role git worktrees under `.promyra/worktrees/<id>/<role>/`; create/remove/list/mergeSync; auto-checkout target branch before merge |
+| `budget.ts` | Per-swarm cost accumulator; soft-warn at 50%, hard-kill at 100%; persistence to `cost.json` via scratchpad |
+| `verification-gate.ts` | Test output parser for pytest, jest, go test, generic; framework detection by fixture name |
+| `plan-writer.ts` | Pure markdown formatter for `plan.md`; roster table, execution order, parallel groups, budget |
+| `merge.ts` | High-level merge API wrapping WorktreePool; 3-dot diff for changedFiles captured before merge |
+| `optimizer-integration.ts` | Subagent role → cascade decision mapping (builder=main, others=cheap); wraps v0.5.0 cascade router |
+| `orchestrator.ts` | 7-phase state machine (PLAN → RESEARCH+PLAN2 parallel → BUILD with retry → TEST → CRITIQUE → DECIDE → MERGE); budget enforcement; pause-on-fail with reasons |
+
+### Decisions (this build, captured in `memory/decisions/v0.6.0.md`)
+
+- File-based scratchpad (durable, diffable, restarts-safe) over in-memory message bus
+- 3-parallel-stage topology (researcher+planner parallel; build→test→critique sequential)
+- Per-role git worktrees for builder+test-runner; read-only subagents operate on cwd
+- Soft-warn at 50%, hard-kill at 100% per-swarm budget; default $2.00
+- Retry-with-feedback (builder gets 2, test-runner 1, others 0) before subagent-failed pause
+- Multica named agents preserved as direct dispatch (bypasses orchestrator)
+
+### Pending (not in this build)
+
+- `apps/pi/src/commands/swarm.ts` refactor — wire to Orchestrator
+- TUI `<SwarmPanel>` component
+- `pi swarm --plan` / `--budget` / `--max-retries` / `--dry-run` / `--continue` / `--status` / `--merge` / `--list` CLI flags
+- Live LLM bench with swarm-on attribution runs
+
+### Test count
+
+**851 tests across 14 packages** (was 749 in v0.5.0; +102 new). All passing.
+
+| Package | v0.5.0 | v0.6.0 (this build) | Δ |
+|---|---|---|---|
+| swarm | — | 102 | NEW |
+| (other 13 packages) | 749 | 749 | 0 |
+| **TOTAL** | **749** | **851** | **+102** |
+
+## v0.5.0 — Token/Cost Foundation
+
+Targets: ≤50% cost vs v0.4.0 (same model), parity quality (±5%), ≤60% wall time.
+
+### New packages
+
+- **`@promyra/cache`** — `PromptCache` (Anthropic breakpoints + OpenAI prefix) + `ToolResultCache` (256-entry LRU, mtime-based invalidation, file-invalidated on edit/write). 20 tests.
+- **`@promyra/optimizer`** — Central decision point: static block assembly, cascade routing (Haiku-class for read-only ops, main model for edits/bash), per-model pricing table (Anthropic, OpenAI, opencode-go). 40 tests.
+- **`@promyra/repo-map`** — `getRepoMap(query, k)` regex-based symbol scanner (TS/Py/Go/Rust/Ruby), query-relevance ranking, token-budget rendering, default excludes (`node_modules`, `.git`, `dist`, ...). 20 tests.
+
+### Provider extensions
+
+- `CallOpts.cacheHints` (`cacheSystem?`, `cacheTools?`, `cacheKey?`)
+- `Usage.cacheReadTokens`, `cacheWriteTokens`, `costUsd?`
+- `TextBlock.cache_control?` for Anthropic breakpoint tagging
+- `AnthropicProvider`: emits `cache_control: ephemeral` on system/tools when hints set; reads `cache_creation_input_tokens` / `cache_read_input_tokens` from SSE
+- `OpenCodeGoProvider`: same Anthropic-protocol behavior
+- `OpenAIProvider`: emits `prompt_cache_key` when cacheKey set; reads `cached_tokens` from `prompt_tokens_details`
+
+### LLM worker wiring (`packages/subagent`)
+
+- `LlmWorker` accepts optional `optimizer` + `toolCache`
+- Each LLM call wrapped with `optimizer.optimize()` (cache hints applied; throws fall back to raw call)
+- Tool result cache: `read`/`grep`/`glob` memoized within session; `edit`/`write` invalidate file-derived entries
+- Parallel tool execution via `Promise.all` (default on; `parallelTools: false` for sequential)
+- `LlmWorker.getCostUsd()` and `getCacheHits()` exposed for telemetry
+- 8 new integration tests (cumulative 120 in subagent)
+
+### TUI cost display (`packages/tui-pro`)
+
+- `Footer` component extended with `tokensIn`, `tokensOut`, `costUsd`, `cacheHitRate`, `elapsedMs` props
+- New `CostTracker` class for per-session cost + cache aggregation
+- `formatStatusLine()` and `formatCostBreakdown()` helpers for status line + `/cost` command
+- 12 new tests (cumulative 78 in tui-pro)
+
+### Bench attribution (`bench/`)
+
+- `LlmBenchRunner` accepts `flags: OptimizerFlags` + `flagLabel: string` for per-technique attribution
+- `BenchResult` extended with `costUsd?`, `cacheHits?`, `flagLabel?`
+- Repo map injection into system prompt (lazy-built, can be disabled)
+- New `bench/src/attribution.ts`: `runAttribution()` runs 6 flag configs (all-on, all-off, cache-off, cascade-off, parallel-off, repomap-off) and reports per-technique cost/wall/pass deltas
+- 5 new tests (cumulative 42 in bench)
+
+### Feature flags
+
+- `PROMYRA_CACHE=0` — disable prompt cache
+- `PROMYRA_REPO_MAP=0` — disable repo map
+- `PROMYRA_CASCADE=0` — disable cascade routing
+- `PROMYRA_PARALLEL_TOOLS=0` — disable parallel tool execution
+- `PROMYRA_TELEMETRY=0` — disable cost telemetry
+- All default ON. `apps/pi/src/flags.ts` reads env at startup; `SubagentRouter.withProvider` consumes.
+- 9 new tests in `apps/pi` (cumulative 91)
+
+### Documentation
+
+- `docs/superpowers/specs/2026-06-11-promyra-v0.5.0-design.md` — full spec
+- `docs/superpowers/plans/2026-06-11-promyra-v0.5.0.md` — implementation plan
+
+### Test count
+
+749 tests across 13 packages (was 635 in v0.4.0; +114 new). All passing.
+
+| Package | v0.4.0 | v0.5.0 | Δ |
+|---|---|---|---|
+| provider | 54 | 63 | +9 |
+| cache | — | 20 | NEW |
+| optimizer | — | 40 | NEW |
+| repo-map | — | 20 | NEW |
+| subagent | 112 | 120 | +8 |
+| tui-pro | 66 | 78 | +12 |
+| bench | 37 | 42 | +5 |
+| apps/pi | 82 | 91 | +9 |
+| (other) | 284 | 275 | -9 (pre-existing dirty state) |
+| **TOTAL** | **635** | **749** | **+114** |
+
+### Verification (live bench)
+
+Run `pnpm --filter @promyra/bench bench --attribution` to see per-flag cost/wall/pass deltas on the 5-task suite. Requires a configured provider in `~/.promyra/promyra-config.json` and `~/.promyra/promyra-auth.json` (or `OPENCODE_GO_API_KEY` env var).
 
 ## v0.4.0 — Bug fixes, convergence, CLI coverage, and streaming tool_use fix
 
@@ -61,7 +189,7 @@ or `finish_reason=tool_calls` (OpenAI), then yield `tool_call`.
 ### Bench result (honest)
 
 ```
-=== pi-pro LLM bench (v0.4.0) ===
+=== promyra LLM bench (v0.4.0) ===
 
   ✗ refactor-helper      tiny-express    node test.js
      error: node test.js exited with code 1
@@ -80,7 +208,7 @@ Wall:   138.6s
 **Diagnosis:** The streaming fix works — the LLM now successfully invokes
 tools and produces real code. The 3 tiny-express tasks fail because the
 `minimax-m3` model's generated code does not pass the fixture's test.js.
-This is a model capability limit, not a pi-pro bug. v0.4.1 will address
+This is a model capability limit, not a promyra bug. v0.4.1 will address
 bench scaffolding hardening and model-swap support.
 
 ### Test totals
@@ -131,7 +259,7 @@ Two new test files exercise the full pipeline with NO mocks for
 filesystem, git, or subprocess.
 
 - `packages/tasks/test/integration.test.ts` (6 tests) — drives `intake → plan → branch → execute → verify → summarize → done` against real `CheckpointStore` + real `SessionMemory` + real `WorktreeStore` + real `SessionLog` + a real tmpdir git repo. Validates taskId regex on 8 invalid IDs (catches the v0.2 shell-injection regression). Tests resume-from-checkpoint. Asserts session log JSONL monotonic timestamps.
-- `bench/test/end-to-end.test.ts` (7 tests) — full `LlmBenchRunner` with a reusable `FakeProvider`, real `tiny-express` fixture copy, real `LlmWorker` + real `@pi/tools` tool instances. Verifies the Anthropic `tool_result` wire format reaches the second LLM call. Verifies no file leak outside the fixture copy. Verifies the bench classifies malformed JSON as `blocked`. `runAllParallel` smoke test with 3 tasks.
+- `bench/test/end-to-end.test.ts` (7 tests) — full `LlmBenchRunner` with a reusable `FakeProvider`, real `tiny-express` fixture copy, real `LlmWorker` + real `@promyra/tools` tool instances. Verifies the Anthropic `tool_result` wire format reaches the second LLM call. Verifies no file leak outside the fixture copy. Verifies the bench classifies malformed JSON as `blocked`. `runAllParallel` smoke test with 3 tasks.
 
 **Integration issues surfaced (real bugs found, not fixed here):**
 
@@ -159,18 +287,18 @@ property-based tests across 3 files.
 
 | Package | Lines | Tests |
 |---|---|---|
-| @pi/checkpoint | **100%** | 12 |
-| @pi/tui-pro | **100%** | 8 |
-| @pi/tools | **99%** | 74 |
-| @pi/tasks | 89% | 23 |
-| @pi/memory | 88% | 5 |
-| @pi/subagent | 87% | 68 |
-| @pi/provider | 85% | 42 |
-| @pi/skill-bundle | 76% | 33 |
-| @pi/bench | 74% | 19 |
-| pi-pro (app) | 16% | 7 |
+| @promyra/checkpoint | **100%** | 12 |
+| @promyra/tui-pro | **100%** | 8 |
+| @promyra/tools | **99%** | 74 |
+| @promyra/tasks | 89% | 23 |
+| @promyra/memory | 88% | 5 |
+| @promyra/subagent | 87% | 68 |
+| @promyra/provider | 85% | 42 |
+| @promyra/skill-bundle | 76% | 33 |
+| @promyra/bench | 74% | 19 |
+| promyra (app) | 16% | 7 |
 
-The `pi-pro` app is at 16% because most CLI commands (`start`, `merge`,
+The `promyra` app is at 16% because most CLI commands (`start`, `merge`,
 `bench`, `config`, `doctor`) are tested only via smoke tests, not
 unit tests. v0.4 candidate for end-to-end CLI testing.
 
@@ -241,8 +369,8 @@ the bench producing real LLM output.
 ### Real bench run with the user's key (2026-06-09)
 
 ```
-$ OPENCODE_GO_API_KEY=sk-lHIIYh7XEReGbuycI5Of1of1tQEeAX61s0y8WsnW27ui5aso3su5YtnYwhOU8qxH pi-pro bench
-=== pi-pro LLM bench ===
+$ OPENCODE_GO_API_KEY=sk-lHIIYh7XEReGbuycI5Of1of1tQEeAX61s0y8WsnW27ui5aso3su5YtnYwhOU8qxH promyra bench
+=== promyra LLM bench ===
   ✗ refactor-helper      tiny-express    node test.js
      error: LLM blocked: Tool invocations are failing with undefined parameters - cannot read files, write files, or run shell commands to perform the refactor
   ✗ add-healthz          tiny-express    node test.js
@@ -301,30 +429,30 @@ problem, not a wire-format problem).
 ## v0.2.0 — Real LLM worker, 5 providers, 7 tools, 3 fixtures
 
 ### Added
-- **`@pi/provider` package** with 5 direct provider adapters:
+- **`@promyra/provider` package** with 5 direct provider adapters:
   `OpenCodeGoProvider`, `AnthropicProvider`, `OpenAIProvider`,
   `OllamaProvider`, `OpenRouterProvider`. Each adapter implements a
   uniform `Provider.complete()` interface that returns an
   `AsyncIterable<StreamChunk>` (token / tool_call / done).
-- **`@pi/tools` package** with 7 file-system and shell tools:
+- **`@promyra/tools` package** with 7 file-system and shell tools:
   `read`, `write`, `edit`, `bash`, `grep`, `glob`, `webfetch`. Each
   tool has a `createXTool(opts)` factory that returns a
   `ToolInstance` consumable by the `LlmWorker`.
-- **Pre-exec security policy** (`@pi/tools/policy.ts`): blocks
+- **Pre-exec security policy** (`@promyra/tools/policy.ts`): blocks
   `rm -rf /`, `rm -rf ~`, `curl | sh`, `wget | bash`, writes to
   `/etc/` or `/usr/`, `sudo`, `chmod 777` on system paths. Detects
   AWS keys, GitHub PATs, Stripe keys, hardcoded `apiKey = "..."`,
   and PEM private key blocks.
-- **`LlmWorker` in `@pi/subagent`**: takes a `Provider` and a
+- **`LlmWorker` in `@promyra/subagent`**: takes a `Provider` and a
   list of `ToolInstance` objects, calls `complete()` with the
   tool schema, iterates the stream, executes `tool_call`s,
   feeds results back to the model, loops until a JSON `{status,
   evidence}` is returned. Hard cap on iterations (default 10)
   to prevent infinite loops.
-- **`@pi/bench` package** (first version): 3 synthetic fixtures
+- **`@promyra/bench` package** (first version): 3 synthetic fixtures
   (`tiny-express`, `tiny-cli`, `tiny-go-svc`) with no client code
   or PII. Each fixture has a known test command.
-- **3 safety/correctness fixes** to `@pi/tasks`:
+- **3 safety/correctness fixes** to `@promyra/tasks`:
   - **Shell-injection fix** in `WorktreeStore`: switched from
     `execSync` with shell-quoted interpolation to `spawnSync` with
     argv array, plus a strict taskId regex (`/^tsk_[a-z0-9]{4,32}$/`).
@@ -332,26 +460,26 @@ problem, not a wire-format problem).
     returns a new Plan, doesn't mutate the input.
   - **Retry+backoff** in `TaskRunner`: snapshots retry up to
     N times with exponential backoff before giving up.
-- **`pi-pro config` CLI command** for managing provider selection,
-  model, and API key (stored at `~/.pi/agent/pi-pro-config.json`
+- **`promyra config` CLI command** for managing provider selection,
+  model, and API key (stored at `~/.promyra/promyra-config.json`
   with 0600 perms).
-- **Real `pi-pro merge` command**: rebases the worktree onto
+- **Real `promyra merge` command**: rebases the worktree onto
   `master`, pushes to `origin`, runs `gh pr create` with a
   generated body and title.
 
 ### Changed
-- **`@pi/skill-bundle`**: replaced 4 fabricated skill pointers
+- **`@promyra/skill-bundle`**: replaced 4 fabricated skill pointers
   (which violated the `using-superpowers` meta-skill — they pointed
   to non-existent skills in the upstream superpowers project) with
   8 real skills sourced from the local superpowers install. The
   bundle now ships 14 real skills, all with descriptions.
-- **System prompt** in `@pi/skill-bundle/prompt.md` updated to
+- **System prompt** in `@promyra/skill-bundle/prompt.md` updated to
   reference the real skill names and the `test-driven-development`
   skill (replaced the fabricated `tdd` pointer).
 
 ### Numbers
 - Workspace test count: **36 → 141** (105 new tests across
-  `provider`, `tools`, `subagent`, `tasks`, `bench`, `pi-pro` app)
+  `provider`, `tools`, `subagent`, `tasks`, `bench`, `promyra` app)
 - All builds pass on Node 20+ with pnpm 10
 - Baseline bench: **0/5** — the runner runs but the LLM
   wasn't wired in this release; the LLM wiring landed in v0.3.
@@ -363,15 +491,15 @@ problem, not a wire-format problem).
   pnpm 10, TypeScript 5.4, Vitest 1.6.
 - 6 packages, each independently testable and mergeable to
   upstream pi-mono:
-  1. `@pi/skill-bundle` — curated skills + default system prompt
-  2. `@pi/checkpoint` — Zod-validated snapshot store + jsonl
+  1. `@promyra/skill-bundle` — curated skills + default system prompt
+  2. `@promyra/checkpoint` — Zod-validated snapshot store + jsonl
      session log
-  3. `@pi/memory` — markdown-backed session memory
-  4. `@pi/tasks` — state machine + session log + worktree store
-  5. `@pi/subagent` — role router with build / test-runner /
+  3. `@promyra/memory` — markdown-backed session memory
+  4. `@promyra/tasks` — state machine + session log + worktree store
+  5. `@promyra/subagent` — role router with build / test-runner /
      code-reviewer / security-auditor
-  6. `@pi/tui-pro` — OpenCode-style Ink components
-- `apps/pi-pro` binary with 5 subcommands: `start`, `resume`,
+  6. `@promyra/tui-pro` — OpenCode-style Ink components
+- `apps/promyra` binary with 5 subcommands: `start`, `resume`,
   `replay`, `merge`, `doctor`, `config`.
 - `bench/` package with 3 synthetic fixtures and 5 eval task
   definitions.
@@ -379,5 +507,5 @@ problem, not a wire-format problem).
 ### Numbers
 - 36 tests passing
 - Real `git worktree` proven end-to-end (worktree created on
-  `pi-pro/<taskId>`, real session log, real checkpoints)
+  `promyra/<taskId>`, real session log, real checkpoints)
 - 8 atomic commits

@@ -8,14 +8,14 @@ import { isSafeBashCommand } from "../src/policy.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "pi-pro-bash-"));
+  workdir = await mkdtemp(join(tmpdir(), "promyra-bash-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@pi/tools/bash", () => {
+describe("@promyra/tools/bash", () => {
   it("runs a benign command and returns stdout + exit 0", async () => {
     const bash = createBashTool();
     const result = await bash.execute({ cmd: "echo hello" });

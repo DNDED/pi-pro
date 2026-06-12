@@ -23,7 +23,7 @@ export interface GrepTool {
   execute(input: { pattern: string; path?: string }): Promise<{ matches: GrepMatch[] }>;
 }
 
-const IGNORE_DIRS = new Set(["node_modules", "dist", ".git", ".pi-pro"]);
+const IGNORE_DIRS = new Set(["node_modules", "dist", ".git", ".promyra"]);
 
 export function createGrepTool(opts: GrepOpts = {}): GrepTool {
   const cwd = opts.cwd ?? process.cwd();

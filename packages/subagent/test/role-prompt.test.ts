@@ -16,10 +16,10 @@ describe("buildRoleSystemPrompt", () => {
 
   it("appends a task-completion contract for the build role", () => {
     const out = buildRoleSystemPrompt("build", basePrompt);
-    expect(out).toContain("After you have applied your edits");
-    expect(out).toContain("emit pass");
-    expect(out).toContain("emit fail");
-    expect(out).toContain("emit blocked");
+    expect(out).toContain("Ultrathink Method");
+    expect(out).toContain('"pass"');
+    expect(out).toContain('"fail"');
+    expect(out).toContain('"blocked"');
   });
 
   it("appends a task-completion contract for the test-runner role", () => {
@@ -52,5 +52,21 @@ describe("buildRoleSystemPrompt", () => {
   it("returns the base prompt unchanged for an unknown role", () => {
     const out = buildRoleSystemPrompt("not-a-real-role", basePrompt);
     expect(out).toBe(basePrompt);
+  });
+
+  it("buildRoleSystemPrompt includes all 4 ultrathink steps for the build role", () => {
+    const out = buildRoleSystemPrompt("build", basePrompt);
+    expect(out).toMatch(/ANALYZE/);
+    expect(out).toMatch(/PLAN/);
+    expect(out).toMatch(/EXECUTE/);
+    expect(out).toMatch(/VERIFY/);
+  });
+
+  it("buildRoleSystemPrompt includes diff self-review guidance for the code-reviewer role", () => {
+    const out = buildRoleSystemPrompt("code-reviewer", basePrompt);
+    expect(out).toMatch(/Read the diff/);
+    expect(out).toContain("Do not modify code");
+    const hasReviewGuidance = /review|Self-review/i.test(out);
+    expect(hasReviewGuidance).toBe(true);
   });
 });

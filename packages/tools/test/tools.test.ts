@@ -8,14 +8,14 @@ import { isSafeBashCommand, scanForSecrets } from "../src/policy.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "pi-pro-tools-"));
+  workdir = await mkdtemp(join(tmpdir(), "promyra-tools-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@pi/tools read", () => {
+describe("@promyra/tools read", () => {
   it("reads a file's contents", async () => {
     const path = join(workdir, "x.txt");
     await writeFile(path, "hello\n", "utf8");
@@ -30,7 +30,7 @@ describe("@pi/tools read", () => {
   });
 });
 
-describe("@pi/tools write", () => {
+describe("@promyra/tools write", () => {
   it("writes content to a file", async () => {
     const path = join(workdir, "out.txt");
     const write = createWriteTool();
@@ -46,7 +46,7 @@ describe("@pi/tools write", () => {
   });
 });
 
-describe("@pi/tools edit", () => {
+describe("@promyra/tools edit", () => {
   it("replaces an exact string with a new one", async () => {
     const path = join(workdir, "f.txt");
     await writeFile(path, "hello world\nhello again\n", "utf8");
@@ -71,7 +71,7 @@ describe("@pi/tools edit", () => {
   });
 });
 
-describe("@pi/tools bash", () => {
+describe("@promyra/tools bash", () => {
   it("runs a benign command and returns stdout", async () => {
     const bash = createBashTool();
     const result = await bash.execute({ cmd: "echo hello" });
@@ -96,7 +96,7 @@ describe("@pi/tools bash", () => {
   });
 });
 
-describe("@pi/tools grep", () => {
+describe("@promyra/tools grep", () => {
   it("finds lines matching a pattern", async () => {
     await writeFile(join(workdir, "a.txt"), "alpha\nbeta\ngamma\n", "utf8");
     const grep = createGrepTool({ cwd: workdir });
@@ -114,7 +114,7 @@ describe("@pi/tools grep", () => {
   });
 });
 
-describe("@pi/tools glob", () => {
+describe("@promyra/tools glob", () => {
   it("returns files matching a pattern", async () => {
     await writeFile(join(workdir, "a.ts"), "", "utf8");
     await writeFile(join(workdir, "b.ts"), "", "utf8");
@@ -125,7 +125,7 @@ describe("@pi/tools glob", () => {
   });
 });
 
-describe("@pi/tools webfetch", () => {
+describe("@promyra/tools webfetch", () => {
   it("fetches a URL and returns the body", async () => {
     const webfetch = createWebfetchTool();
     const result = await webfetch.execute({ url: "data:text/plain,hello%20world" });
@@ -134,7 +134,7 @@ describe("@pi/tools webfetch", () => {
   });
 });
 
-describe("@pi/tools: re-exports", () => {
+describe("@promyra/tools: re-exports", () => {
   it("isSafeBashCommand is exported", () => {
     expect(typeof isSafeBashCommand).toBe("function");
   });

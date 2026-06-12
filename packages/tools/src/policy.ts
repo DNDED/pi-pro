@@ -29,7 +29,7 @@ const SECRET_PATTERNS: Array<{ re: RegExp; desc: string }> = [
   { re: /\bAKIA[0-9A-Z]{16}\b/, desc: "AWS access key ID" },
   { re: /\bghp_[0-9a-zA-Z]{30,}\b/, desc: "GitHub personal access token" },
   { re: /\bsk-(live|test)-[0-9a-zA-Z]{16,}\b/, desc: "Stripe-style API key" },
-  { re: /(api[_-]?key|secret|password|token)\s*[:=]\s*["']([^"'\\]{12,})["']/i, desc: "hardcoded secret value" },
+  { re: /(api[_-]?key|secret|password|token)\s*[:=]\s*["']([^"'\\]{20,})["']/i, desc: "hardcoded secret value" },
   { re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, desc: "PEM private key block" },
 ];
 

@@ -30,7 +30,7 @@ describe("WorktreeStore — shell-injection fix", () => {
   it("create still works for a normal taskId", () => {
     const wt = new WorktreeStore(dir);
     const info = wt.create("tsk_normal123");
-    expect(info.branch).toBe("pi-pro/normal123");
+    expect(info.branch).toBe("promyra/normal123");
   });
 
   it("remove is safe with a path containing shell metacharacters", () => {

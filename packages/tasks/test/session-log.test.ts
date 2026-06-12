@@ -7,18 +7,18 @@ import { SessionLog } from "../src/session-log.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "pi-pro-session-log-"));
+  workdir = await mkdtemp(join(tmpdir(), "promyra-session-log-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@pi/tasks/session-log", () => {
+describe("@promyra/tasks/session-log", () => {
   it("creates the log file on first append", async () => {
     const log = new SessionLog(workdir);
     await log.append("tsk_aaa", { state: "intake", event: "started", data: {} });
-    const raw = await readFile(join(workdir, ".pi-pro/sessions", "tsk_aaa.jsonl"), "utf8");
+    const raw = await readFile(join(workdir, ".promyra/sessions", "tsk_aaa.jsonl"), "utf8");
     expect(raw).toContain("\"state\":\"intake\"");
   });
 
@@ -26,7 +26,7 @@ describe("@pi/tasks/session-log", () => {
     const log = new SessionLog(workdir);
     await log.append("tsk_bbb", { state: "intake", event: "started", data: {} });
     await log.append("tsk_bbb", { state: "plan", event: "advanced", data: {} });
-    const raw = await readFile(join(workdir, ".pi-pro/sessions", "tsk_bbb.jsonl"), "utf8");
+    const raw = await readFile(join(workdir, ".promyra/sessions", "tsk_bbb.jsonl"), "utf8");
     const lines = raw.trim().split("\n");
     expect(lines).toHaveLength(2);
     expect(lines[0]).toContain("\"state\":\"intake\"");
@@ -63,9 +63,9 @@ describe("@pi/tasks/session-log", () => {
     const log = new SessionLog(workdir);
     // Create the sessions dir then write a single line of garbage.
     const { mkdir } = await import("node:fs/promises");
-    await mkdir(join(workdir, ".pi-pro/sessions"), { recursive: true });
+    await mkdir(join(workdir, ".promyra/sessions"), { recursive: true });
     await writeFile(
-      join(workdir, ".pi-pro/sessions", "tsk_bad.jsonl"),
+      join(workdir, ".promyra/sessions", "tsk_bad.jsonl"),
       "{not valid json\n",
       "utf8"
     );

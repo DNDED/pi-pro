@@ -42,7 +42,7 @@ afterAll(async () => {
   // Clean up any created worktrees and branches before removing the temp dir.
   try {
     execSync("git worktree prune", { cwd: repoDir });
-    const out = execSync("git branch --list 'pi-pro/*'", { cwd: repoDir, encoding: "utf8" });
+    const out = execSync("git branch --list 'promyra/*'", { cwd: repoDir, encoding: "utf8" });
     for (const line of out.split("\n")) {
       const b = line.trim().replace(/^\* /, "");
       if (b) {
@@ -73,7 +73,7 @@ describe("worktree-store fuzz: VALID taskId", () => {
           // create() must return a WorktreeInfo, not throw.
           const info = store.create(taskId);
           expect(info.taskId).toBe(taskId);
-          expect(info.branch).toMatch(/^pi-pro\//);
+          expect(info.branch).toMatch(/^promyra\//);
           expect(info.path).toContain(taskId);
           // Clean up to keep the repo small and avoid collision across runs.
           store.remove(taskId);
@@ -125,7 +125,7 @@ describe("worktree-store fuzz: shell-injection regression", () => {
         // Cross-check: the raw input must NOT appear anywhere in the worktree
         // base directory contents. (If it did, that would imply the value
         // was used in a git command somehow.)
-        const base = join(repoDir, ".pi-pro", "worktrees");
+        const base = join(repoDir, ".promyra", "worktrees");
         // We don't try to deeply assert; the throw above is the primary check.
         // Just make sure no entry whose name is the hostile string exists.
         // (The regex check should already prevent this — this is a belt-and-suspenders.)

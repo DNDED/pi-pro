@@ -5,6 +5,8 @@ const MATRIX: Record<Role, Tool[]> = {
   "test-runner":      ["bash", "read", "grep", "glob"],
   "code-reviewer":    ["read", "grep", "glob"],
   "security-auditor": ["read", "grep", "glob"],
+  "planner":          ["read", "grep", "glob"],
+  "researcher":       ["read", "grep", "glob", "webfetch"],
 };
 
 export function allowedTools(role: Role): Tool[] {

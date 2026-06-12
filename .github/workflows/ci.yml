@@ -33,15 +33,15 @@ jobs:
         run: pnpm -r test
       - name: Coverage
         run: |
-          pnpm --filter "@pi/checkpoint" coverage
-          pnpm --filter "@pi/memory" coverage
-          pnpm --filter "@pi/skill-bundle" coverage
-          pnpm --filter "@pi/provider" coverage
-          pnpm --filter "@pi/tools" coverage
-          pnpm --filter "@pi/tui-pro" coverage
-          pnpm --filter "@pi/subagent" coverage
-          pnpm --filter "@pi/tasks" coverage
-          pnpm --filter "@pi/bench" coverage
+          pnpm --filter "@promyra/checkpoint" coverage
+          pnpm --filter "@promyra/memory" coverage
+          pnpm --filter "@promyra/skill-bundle" coverage
+          pnpm --filter "@promyra/provider" coverage
+          pnpm --filter "@promyra/tools" coverage
+          pnpm --filter "@promyra/tui-pro" coverage
+          pnpm --filter "@promyra/subagent" coverage
+          pnpm --filter "@promyra/tasks" coverage
+          pnpm --filter "@promyra/bench" coverage
       - name: Fail if any package coverage < 70%
         run: |
           for d in packages/*/coverage; do

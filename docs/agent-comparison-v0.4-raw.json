@@ -1,0 +1,19 @@
+=== Agent Comparison v2 ===
+Model: minimax-m3 | Tasks: 8 | Runs: 3
+Started: 2026-06-10T01:41:57.688Z
+
+Pre-installing fixtures...
+Fixtures ready.
+
+
+============================================================
+MODE: SANDBOX
+============================================================
+
+--- refactor-helper ---
+  run 1: pi=P(109.6s,3315in) oc=P(72.8s)
+  run 2: pi=P(38.9s,2115in) oc=P(16.2s)
+  run 3: pi=P(32.1s,1836in) oc=P(20.6s)
+
+--- add-healthz ---
+  run 1: pi=P(25.1s,1575in) oc=P(34.4s)

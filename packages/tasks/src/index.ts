@@ -1,3 +1,5 @@
+export { CheckpointStore } from "@promyra/checkpoint";
+export { SessionMemory } from "@promyra/memory";
 export * from "./types.js";
 export * from "./state-machine.js";
 export * from "./session-log.js";

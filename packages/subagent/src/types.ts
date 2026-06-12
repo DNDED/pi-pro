@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const RoleSchema = z.enum(["build", "test-runner", "code-reviewer", "security-auditor"]);
+export const RoleSchema = z.enum(["build", "test-runner", "code-reviewer", "security-auditor", "planner", "researcher"]);
 export type Role = z.infer<typeof RoleSchema>;
 
 export const StepContextSchema = z.object({

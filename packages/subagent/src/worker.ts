@@ -3,6 +3,8 @@ import { buildPrompt } from "./roles/build.js";
 import { testRunnerPrompt } from "./roles/test-runner.js";
 import { codeReviewerPrompt } from "./roles/code-reviewer.js";
 import { securityAuditorPrompt } from "./roles/security-auditor.js";
+import { plannerPrompt } from "./roles/planner.js";
+import { researcherPrompt } from "./roles/researcher.js";
 
 export function promptFor(role: Role, ctx: StepContext): string {
   switch (role) {
@@ -10,6 +12,8 @@ export function promptFor(role: Role, ctx: StepContext): string {
     case "test-runner": return testRunnerPrompt(ctx);
     case "code-reviewer": return codeReviewerPrompt(ctx);
     case "security-auditor": return securityAuditorPrompt(ctx);
+    case "planner": return plannerPrompt(ctx);
+    case "researcher": return researcherPrompt(ctx);
   }
 }
 

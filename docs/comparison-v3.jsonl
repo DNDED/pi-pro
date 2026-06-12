@@ -1,0 +1,38 @@
+# Agent Comparison v3
+Model: minimax-m3 | Tasks: 4 | Runs: 2
+Started: 2026-06-10T18:50:33.907Z
+
+
+=== MODE: SANDBOX ===
+Time: 2026-06-10T18:50:33.932Z
+
+--- refactor-helper ---
+{"mode":"sandbox","task":"refactor-helper","run":1,"pi":{"pass":true,"wall":"33.3","in":1505,"out":1316},"oc":{"pass":true,"wall":"47.0","err":null}}
+  r1: pi=P(33.3s,1505i) oc=P(47.0s)
+{"mode":"sandbox","task":"refactor-helper","run":2,"pi":{"pass":true,"wall":"40.8","in":1615,"out":1719},"oc":{"pass":true,"wall":"90.0","err":"spawnSync /bin/sh ETIMEDOUT"}}
+  r2: pi=P(40.8s,1615i) oc=P(90.0s)
+
+--- fix-bug-auth ---
+{"mode":"sandbox","task":"fix-bug-auth","run":1,"pi":{"pass":true,"wall":"16.7","in":1231,"out":744},"oc":{"pass":true,"wall":"24.3","err":null}}
+  r1: pi=P(16.7s,1231i) oc=P(24.3s)
+{"mode":"sandbox","task":"fix-bug-auth","run":2,"pi":{"pass":true,"wall":"86.1","in":0,"out":1714},"oc":{"pass":true,"wall":"32.3","err":null}}
+  r2: pi=P(86.1s,0i) oc=P(32.3s)
+
+--- add-validation ---
+{"mode":"sandbox","task":"add-validation","run":1,"pi":{"pass":true,"wall":"33.0","in":1543,"out":2024},"oc":{"pass":true,"wall":"66.8","err":null}}
+  r1: pi=P(33.0s,1543i) oc=P(66.8s)
+{"mode":"sandbox","task":"add-validation","run":2,"pi":{"pass":true,"wall":"21.2","in":1504,"out":1289},"oc":{"pass":true,"wall":"68.8","err":null}}
+  r2: pi=P(21.2s,1504i) oc=P(68.8s)
+
+--- add-modulo ---
+{"mode":"sandbox","task":"add-modulo","run":1,"pi":{"pass":true,"wall":"27.1","in":3205,"out":1416},"oc":{"pass":true,"wall":"44.3","err":null}}
+  r1: pi=P(27.1s,3205i) oc=P(44.3s)
+{"mode":"sandbox","task":"add-modulo","run":2,"pi":{"pass":true,"wall":"34.0","in":1749,"out":1208},"oc":{"pass":true,"wall":"38.8","err":null}}
+  r2: pi=P(34.0s,1749i) oc=P(38.8s)
+
+Loaded skills: 6115 chars
+
+=== MODE: PARITY ===
+Time: 2026-06-10T19:02:24.575Z
+
+--- refactor-helper ---
