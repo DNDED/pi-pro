@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@pi/cache": "workspace:*",
+    "@pi/context-manager": "workspace:*",
     "@pi/optimizer": "workspace:*",
     "@pi/provider": "workspace:*",
     "@pi/repo-map": "workspace:*",

@@ -109,4 +109,11 @@ export const TASKS: BenchTask[] = [
     difficulty: "very-hard",
     expected: { testsPass: true },
   },
+  {
+    id: "long-task-50turn",
+    fixture: "tiny-express",
+    description: "v0.7.0 long-task fixture: 50+ turn conversation that exercises the v0.7.0 context manager (sliding window + extractive compression + adaptive triggers). The model must add 3 endpoints (/users, /healthz, /metrics), fix 2 bugs (auth leak, race condition), and refactor 1 helper, all while context grows past 200k tokens. The runner verifies the model completes all subtasks without losing track of earlier requirements (cross-session recall) and without exceeding 50MB RSS (memory leak target).",
+    difficulty: "very-hard",
+    expected: { hasNewEndpoint: "/metrics", testsPass: true },
+  },
 ];

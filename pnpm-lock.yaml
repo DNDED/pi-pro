@@ -81,6 +81,9 @@ importers:
       '@pi/cache':
         specifier: workspace:*
         version: link:../packages/cache
+      '@pi/context-manager':
+        specifier: workspace:*
+        version: link:../packages/context-manager
       '@pi/optimizer':
         specifier: workspace:*
         version: link:../packages/optimizer
