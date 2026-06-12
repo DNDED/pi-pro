@@ -3,7 +3,65 @@
 All notable changes to pi-pro are documented here. pi-pro adheres to
 [Semantic Versioning](https://semver.org/).
 
-## v0.7.0 — Memory at Scale (in progress)
+## v0.8.0 — UX Differentiation (in progress)
+
+Targets vs v0.7.0:
+- **Long-session UX:** visible per-turn cost so users can budget each turn
+- **Discoverability:** clickable links in streaming text (HTTP, file://, file:line refs)
+- **Speed:** vim-style cursor + movement in PromptInput
+
+### TUI components (47 new tests in `packages/tui-pro`)
+
+| Component | Purpose |
+|---|---|
+| `Footer.turnDelta` prop | New `Δtok:1.5K↗/500↘ $0.01 3🔧 1m30s` line in accent color; omits cost when 0, omits tool count when 0 |
+| `parseLinks` util | Splits text into `text` + `url` segments for HTTP/HTTPS URLs, `file://` URLs, and `file.ext:LINE` refs |
+| `StreamingText` (refactored) | Renders URLs as cyan+underline (terminals auto-link); `file:line` href to `file://$PWD/path#L<line>` for editor integration |
+| `PromptInput` v0.8.0 | Cursor position tracking; vim-style insert-mode bindings: `h`/`l` (left/right), `w`/`b`/`e` (word), `0`/`$` (line start/end); `Home`/`End` + arrow keys also work; insert at cursor; backspace/delete at cursor; `Ctrl+W` (delete word back), `Ctrl+U` (kill to line start), `Ctrl+A`/`Ctrl+E` (Emacs-style line start/end), `Esc` (clear); inverse-color cursor; hint footer |
+| `wordForward` / `wordBackward` (exported) | Utility helpers used by `w`/`b`/`e` |
+
+### `LlmWorker` v0.8.0 (6 new tests in `packages/subagent`)
+
+| Addition | Purpose |
+|---|---|
+| `getLastTurnUsage()` | Snapshot of last LLM call: `{tokensIn, tokensOut, costUsd, durationMs, toolCalls, turnNumber}` |
+| `getDeltaSinceLastRun()` | Delta of last `run()` vs previous; null until 2nd `run()` |
+| Per-turn snapshot | Populated on every `done` chunk |
+| Session `totalCostUsd` | Also accumulates from `chunk.usage.costUsd` (so tests without optimizer can verify) |
+
+### Decisions (this build, captured in `memory/decisions/v0.8.0.md`)
+
+- Per-turn cost display: `Δtok:1.5K↗/500↘ $0.01` line in Footer (accent color)
+- Clickable links: cyan+underline styling; modern terminals auto-link; `file:line` refs href to `file://$PWD/path#L<line>` for editor integration
+- Vim motions: insert-mode only (h/l, w/b/e, 0/$); full modal vim deferred to v0.8.1
+- Backwards-compat: Footer without turnDelta prop shows no delta line
+- Backwards-compat: PromptInput cursor starts at end of value (preserves old behavior)
+- Live LLM bench attribution: deferred (OpenCode Go key returns 401 on completions; needs dashboard activation)
+
+### Pending (not yet built)
+
+- Full modal vim (esc → normal mode, d/c/y, visual mode, ex commands)
+- Web session viewer (separate web app; significant scope)
+- sqlite-vss for memory-store (only if scale demands >10k chunks)
+- Live LLM bench attribution (key fix required at opencode.ai/auth)
+
+### Test count
+
+**1069 tests across 18 packages** (was 1016 after v0.7.0; +53 new). All passing.
+
+| Package | v0.7.0 | v0.8.0 (this build) | Δ |
+|---|---|---|---|
+| tui-pro | 132 | 179 | +47 (delta + links + vim) |
+| subagent | 133 | 139 | +6 (per-turn usage API) |
+| (other 16 packages) | 942 | 942 | 0 |
+| **TOTAL** | **1016** | **1069** | **+53** |
+
+> Live LLM bench attribution deferred: OpenCode Go key returns 401 on
+> `/v1/messages` and `/v1/chat/completions` (key works for `/v1/models` only).
+> Likely cause: Go subscription not active for this key. Fix: activate at
+> https://opencode.ai/auth, then re-run bench in a follow-up session.
+
+## v0.7.0 — Memory at Scale
 
 Targets vs v0.6.0:
 - **Long-session completion:** ≥ 90% of v0.6.0 short-session quality on 50+ turn bench

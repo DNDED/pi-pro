@@ -111,9 +111,24 @@ Stack (shipped — all 4 NEW packages + integration + UI + bench):
 
 Test count: **1016 / 1016 passing** (was 868 in v0.6.0-finish; +148 new). All 18 packages build clean.
 
-12 atomic commits pushed to DNDED/pi-pro master: rename + 4 packages + wiring + lock + docs/memory/CHANGELOG + TUI + CLI + bench attribution + this paperwork.
+### v0.8.0 UX Differentiation — SHIPPED 2026-06-11
 
-Live LLM bench deferred to v0.7.1 follow-up session (no API key in env); projected numbers in `formatContextAttribution` from spec §3.
+Targets vs v0.7.0:
+- **Long-session UX:** visible per-turn cost so users can budget each turn
+- **Discoverability:** clickable links in streaming text (HTTP, file://, file:line refs)
+- **Speed:** vim-style cursor + movement in PromptInput
+
+Stack (shipped, all in `packages/tui-pro` + `packages/subagent`):
+1. **`Footer.turnDelta` prop** — `Δtok:1.5K↗/500↘ $0.01 3🔧 1m30s` line in accent color; omits cost/tools when 0 (+10 tests in tui-pro)
+2. **`LlmWorker.getLastTurnUsage()` + `getDeltaSinceLastRun()`** — per-turn snapshot of last LLM call; null until 2nd `run()` (+6 tests in subagent)
+3. **`parseLinks` util + `StreamingText` refactor** — HTTP/HTTPS URLs, `file://` URLs, and `file.ext:LINE` refs rendered as cyan+underline (+17 tests)
+4. **`PromptInput` v0.8.0** — cursor position + vim-style insert-mode bindings (h/l, w/b/e, 0/$, Ctrl+W/U/A/E, Esc); inverse-color cursor; hint footer (+20 tests)
+
+Test count: **1069 / 1069 passing** (was 1016 in v0.7.0; +53 new). All 18 packages build clean.
+
+3 atomic commits pushed to DNDED/pi-pro master: per-turn cost + clickable links + vim motions.
+
+Live LLM bench attribution deferred: OpenCode Go key returns 401 on completion endpoints (works for `/v1/models` but not `/v1/messages` or `/v1/chat/completions`). Likely: Go subscription not active for this key. Fix: activate at https://opencode.ai/auth, then re-run bench in follow-up.
 
 ### Roadmap (future)
 
