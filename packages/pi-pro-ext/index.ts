@@ -1,52 +1,35 @@
 /**
- * pi-pro v0.1.0 — extension for pi-mono.
+ * pi-pro v0.2.0 — extension for pi-mono.
  *
  * Loaded automatically by `pi` when registered in ~/.pi/agent/settings.json.
  * Provides:
- *   - Agent mode cycle (build/plan) with Tab shortcut
+ *   - Agent mode cycle (build/plan) + Tab shortcut
  *   - Plan mode: DESTRUCTIVE_PATTERNS bash gate + read-only tool allowlist
  *   - Todo tool (LLM-callable, state in tool result details)
- *   - Memory commands: /btw, /context, /memory-add, /memory-search, /memory-list, /memory-forget
- *   - REPL helpers: :mode, :plan, :todos, :config, :doctor
- *   - Config: ~/.pi/pi.json (Zod-validated via @pi-pro/config)
+ *   - Memory: file-based JSONL store (add/search/list/clear)
+ *   - Starship-style footer (cwd + branch + git icons + runtime)
+ *   - Plan widget ([DONE:n] markers, setWidget aboveEditor)
+ *   - REPL helpers: :mode, :plan, :todos, :config, :doctor, /btw, /context, /memory-*
  *
  * Install: `pi install ./packages/pi-pro-ext`
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { loadConfig, saveConfig, getDefaultModes, cycleMode as cycleModeCfg } from "@pi-pro/config";
-
-const DESTRUCTIVE_BASH: RegExp[] = [
-  /\brm\s+-rf?\s+\/(?!\w)/i,
-  /\brm\s+-rf?\s+~/i,
-  /\bcurl\s+[^|]*\|\s*(sh|bash)/i,
-  /\bsudo\b/i,
-  /\bchmod\s+777\b/i,
-  /\bmkfs\b/i,
-  /\bshutdown\b/i,
-  /\breboot\b/i,
-  /\bgit\s+(push|reset\s+--hard|clean\s+-fd)\b/i,
-];
-
-function isBashDestructive(cmd: string): boolean {
-  return DESTRUCTIVE_BASH.some((p) => p.test(cmd));
-}
-
-function maskKey(k: string): string {
-  if (k.length <= 8) return "****";
-  return `${k.slice(0, 4)}...${k.slice(-4)}`;
-}
-
-function getEnvKey(provider: string): string | undefined {
-  const map: Record<string, string> = {
-    "opencode-go": "OPENCODE_GO_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "openrouter": "OPENROUTER_API_KEY",
-    "google": "GOOGLE_API_KEY",
-  };
-  return process.env[map[provider] ?? `${provider.toUpperCase()}_API_KEY`];
-}
+import { execSync } from "node:child_process";
+import { buildStarshipFooter } from "./src/footer.js";
+import { parsePlanItems, markPlanDone, renderPlanWidget, isSafeBash } from "./src/plan-widget.js";
+import { summarizeGitStatus, formatStatusIcons, parsePorcelain } from "./src/util/git-status.js";
+import { detectRuntime, formatRuntime } from "./src/util/runtime-detect.js";
+import { detectNerdFonts } from "./src/util/nerd-fonts.js";
+import {
+  addMemory,
+  clearMemory,
+  listMemory,
+  loadMemoryState,
+  searchMemory,
+  type MemoryState,
+} from "./src/memory.js";
 
 interface TodoItem {
   id: number;
@@ -82,8 +65,60 @@ function renderTodos(state: typeof TODO_INIT): string {
   return lines.join("\n");
 }
 
+function maskKey(k: string): string {
+  if (k.length <= 8) return "****";
+  return `${k.slice(0, 4)}...${k.slice(-4)}`;
+}
+
+function getEnvKey(provider: string): string | undefined {
+  const map: Record<string, string> = {
+    "opencode-go": "OPENCODE_GO_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "google": "GOOGLE_API_KEY",
+  };
+  return process.env[map[provider] ?? `${provider.toUpperCase()}_API_KEY`];
+}
+
+interface GitInfo {
+  branch: string | null;
+  ahead: number;
+  behind: number;
+  porcelain: string;
+}
+
+function readGit(cwd: string): GitInfo {
+  try {
+    execSync("test -d .git", { cwd, stdio: "ignore" });
+  } catch {
+    return { branch: null, ahead: 0, behind: 0, porcelain: "" };
+  }
+  let branch: string | null = null;
+  let ahead = 0;
+  let behind = 0;
+  let porcelain = "";
+  try {
+    branch = execSync("git rev-parse --abbrev-ref HEAD 2>/dev/null", { cwd, encoding: "utf8" }).trim() || null;
+  } catch { branch = null; }
+  try {
+    porcelain = execSync("git status --porcelain 2>/dev/null", { cwd, encoding: "utf8" });
+  } catch { porcelain = ""; }
+  try {
+    const counts = execSync(
+      'git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null || echo "0\t0"',
+      { cwd, encoding: "utf8" },
+    ).trim().split(/\s+/);
+    ahead = parseInt(counts[0] ?? "0", 10) || 0;
+    behind = parseInt(counts[1] ?? "0", 10) || 0;
+  } catch { ahead = 0; behind = 0; }
+  return { branch, ahead, behind, porcelain };
+}
+
 export default function (pi: ExtensionAPI): void {
   const todoState: { items: TodoItem[]; nextId: number } = { items: [], nextId: 1 };
+  const memState: MemoryState = loadMemoryState();
+  let planItems: { step: number; text: string; completed: boolean }[] = [];
 
   function getCurrentModeName(): string {
     try {
@@ -99,7 +134,7 @@ export default function (pi: ExtensionAPI): void {
       cfg.agent.name = name;
       saveConfig(cfg);
     } catch {
-      // best-effort: no config yet
+      // best-effort
     }
   }
 
@@ -110,38 +145,61 @@ export default function (pi: ExtensionAPI): void {
     if (m.activeTools.length > 0) {
       pi.setActiveTools(m.activeTools as never);
     }
-    // For build mode (empty activeTools): don't call setActiveTools.
-    // pi-mono's default is to enable all tools; calling with empty array
-    // would be an error. Restoring on cycle-to-build leaves tools as-is.
   }
 
-  function updateModeStatus(modeName: string): void {
-    pi.setStatus?.("pi-pro-mode", `${modeName} · tab: cycle · :mode to switch`);
+  function rebuildFooter(_ctx: unknown): void {
+    const cwd = process.cwd();
+    const git = readGit(cwd);
+    const runtime = detectRuntime(cwd);
+    const nerdFonts = detectNerdFonts();
+    const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
+    const mode = getCurrentModeName();
+    const isPlan = mode === "plan";
+    const line = buildStarshipFooter({
+      cwd,
+      branch: git.branch,
+      gitIcons: summary.icons,
+      runtime: runtime ? formatRuntime(runtime).replace(/^via\s+/, "") : null,
+      mode,
+      modeReadOnly: isPlan,
+      nerdFonts,
+    });
+    // Footer status is on ctx.ui (not pi).
   }
 
-  function planSystemPrompt(): string {
-    return `[PLAN MODE ACTIVE]
-You are in plan mode — a read-only exploration mode.
-
-Restrictions:
-- Tools: read, bash (filtered), grep, find, ls
-- Bash: blocked by DESTRUCTIVE_PATTERNS (rm -rf, sudo, chmod 777, git push, etc.)
-- NO edits, writes, or file modifications
-
-Describe plans under a "Plan:" header with numbered steps:
-Plan:
-1. First step
-2. Second step
-
-When execution starts, mark steps done with [DONE:n] markers.`;
+  function updateModeBadge(pi: ExtensionAPI, modeName: string): void {
+    // Try the common footer key. The exact ctx.ui.setStatus API requires `ctx`.
+    // The ExtensionAPI itself doesn't have setStatus, but ctx does.
+    // We capture ctx in handlers and call it there.
+    void pi;
   }
 
-  pi.on("session_start", async (_event, _ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     const modeName = getCurrentModeName();
     applyActiveTools(modeName);
-    updateModeStatus(modeName);
-    if (_ctx.hasUI) {
-      _ctx.ui.notify(`pi-pro v0.1.0 · mode: ${modeName}`, "info");
+
+    const cwd = process.cwd();
+    const git = readGit(cwd);
+    const runtime = detectRuntime(cwd);
+    const nerdFonts = detectNerdFonts();
+    const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
+    const isPlan = modeName === "plan";
+    const footer = buildStarshipFooter({
+      cwd,
+      branch: git.branch,
+      gitIcons: summary.icons,
+      runtime: runtime ? formatRuntime(runtime).replace(/^via\s+/, "") : null,
+      mode: modeName,
+      modeReadOnly: isPlan,
+      nerdFonts,
+    });
+    try {
+      (ctx.ui as { setStatus?: (k: string, t: string | undefined) => void }).setStatus?.("pi-pro-footer", footer);
+    } catch {
+      // ignore
+    }
+    if (ctx.hasUI) {
+      ctx.ui.notify(`pi-pro v0.2.0 · ${modeName}${isPlan ? " (read-only)" : ""}`, "info");
     }
   });
 
@@ -151,9 +209,8 @@ When execution starts, mark steps done with [DONE:n] markers.`;
     if (event.toolName === "bash") {
       const input = event.input as { command?: string };
       const cmd = input.command ?? "";
-      if (isBashDestructive(cmd)) {
-        return { block: true, reason: `Plan mode: bash blocked (destructive pattern). Command: ${cmd.slice(0, 200)}` };
-      }
+      if (isSafeBash(cmd)) return;
+      return { block: true, reason: `Plan mode: bash blocked (destructive pattern). Command: ${cmd.slice(0, 200)}` };
     }
     if (event.toolName === "write" || event.toolName === "edit") {
       return { block: true, reason: "Plan mode is read-only (no edits/writes). Use :mode build to switch." };
@@ -166,47 +223,153 @@ When execution starts, mark steps done with [DONE:n] markers.`;
     return {
       message: {
         customType: "pi-pro-plan-mode",
-        content: planSystemPrompt(),
+        content:
+          `[PLAN MODE ACTIVE]\n` +
+          `You are in plan mode — a read-only exploration mode.\n\n` +
+          `Restrictions:\n- Tools: read, bash (filtered), grep, find, ls\n` +
+          `- Bash: blocked by DESTRUCTIVE_PATTERNS (rm -rf, sudo, chmod 777, git push, etc.)\n` +
+          `- NO edits, writes, or file modifications\n\n` +
+          `Describe plans under a "Plan:" header with numbered steps:\n` +
+          `Plan:\n1. First step\n2. Second step\n\n` +
+          `When execution starts, mark steps done with [DONE:n] markers.`,
         display: false,
       },
     };
   });
 
+  pi.on("agent_end", async (event, ctx) => {
+    if (getCurrentModeName() !== "plan") return;
+    const last = [...(event.messages as { role: string; content: unknown }[])].reverse().find((m) => m.role === "assistant");
+    if (!last) return;
+    const text = typeof last.content === "string" ? last.content : JSON.stringify(last.content);
+    if (planItems.length === 0) {
+      planItems = parsePlanItems(text);
+    }
+    if (planItems.length > 0) {
+      markPlanDone(text, planItems);
+      const lines = renderPlanWidget(planItems);
+      if (lines.length > 0) {
+        try {
+          (ctx.ui as { setWidget?: (k: string, c: string[] | undefined) => void }).setWidget?.("pi-pro-plan", lines);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  });
+
+  pi.on("turn_end", async (event, ctx) => {
+    if (getCurrentModeName() !== "plan") return;
+    if (planItems.length === 0) return;
+    const lastMsg = (event.message ?? null) as { content?: unknown } | null;
+    if (!lastMsg) return;
+    const text = typeof lastMsg.content === "string"
+      ? lastMsg.content
+      : JSON.stringify(lastMsg.content ?? "");
+    markPlanDone(text, planItems);
+    const lines = renderPlanWidget(planItems);
+    try {
+      (ctx.ui as { setWidget?: (k: string, c: string[] | undefined) => void }).setWidget?.("pi-pro-plan", lines);
+    } catch {
+      // ignore
+    }
+  });
+
+  pi.on("session_shutdown", async () => {
+    planItems = [];
+  });
+
   pi.registerCommand("mode", {
-    description: "Show/cycle/set agent mode (build | plan). Use Tab in editor to cycle.",
-    handler: async (args, _ctx) => {
+    description: "Show/cycle/set agent mode (build | plan). Tab in editor to cycle.",
+    handler: async (args, ctx) => {
       const arg = args?.trim();
       if (!arg) {
         const cfg = loadConfig();
         for (const m of getDefaultModes()) {
           const marker = m.name === cfg.agent.name ? "→" : " ";
-          _ctx.ui.notify(`${marker} ${m.name}  ${m.label}${m.readOnly ? " (read-only)" : ""}`, "info");
+          ctx.ui.notify(`${marker} ${m.name}  ${m.label}${m.readOnly ? " (read-only)" : ""}`, "info");
         }
         return;
       }
       const target = getDefaultModes().find((m) => m.name === arg);
       if (!target) {
-        _ctx.ui.notify(`unknown mode: ${arg} (available: build, plan)`, "error");
+        ctx.ui.notify(`unknown mode: ${arg} (available: build, plan)`, "error");
         return;
       }
       setModeName(target.name);
       applyActiveTools(target.name);
-      updateModeStatus(target.name);
-      _ctx.ui.notify(`mode: ${target.name} (${target.label})${target.readOnly ? " — read-only" : ""}`, "info");
+      ctx.ui.notify(`mode: ${target.name} (${target.label})${target.readOnly ? " — read-only" : ""}`, "info");
     },
   });
 
   pi.registerCommand("plan", {
     description: "Toggle plan mode (read-only). Cycles build ↔ plan.",
-    handler: async (_args, _ctx) => {
+    handler: async (_args, ctx) => {
       const current = getCurrentModeName();
       const target = current === "plan" ? "build" : "plan";
       setModeName(target);
       applyActiveTools(target);
-      updateModeStatus(target);
-      _ctx.ui.notify(`plan mode: ${target === "plan" ? "ON (read-only)" : "OFF (build)"}`, "info");
+      ctx.ui.notify(`plan mode: ${target === "plan" ? "ON (read-only)" : "OFF (build)"}`, "info");
     },
   });
+
+  pi.registerCommand("todos", {
+    description: "Show current todo list",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(renderTodos(todoState), "info");
+    },
+  });
+
+  pi.registerCommand("config", {
+    description: "Show pi-pro config",
+    handler: async (_args, ctx) => {
+      try {
+        const cfg = loadConfig();
+        const lines = [
+          `pi-pro config · v0.2.0`,
+          `─`.repeat(40),
+          `  provider:  ${cfg.provider.name}`,
+          `  model:     ${cfg.provider.model}`,
+          cfg.provider.baseUrl ? `  baseUrl:   ${cfg.provider.baseUrl}` : "",
+          `  agent:     ${cfg.agent.name}`,
+          `  max iter:  ${cfg.agent.maxIterations}`,
+          `  tool budget: ${cfg.agent.toolBudget}`,
+          `  modes:     ${getDefaultModes().map((m) => m.name).join(", ")}`,
+        ].filter(Boolean);
+        ctx.ui.notify(lines.join("\n"), "info");
+      } catch (e) {
+        ctx.ui.notify(`error loading config: ${(e as Error).message}`, "error");
+      }
+    },
+  });
+
+  pi.registerCommand("doctor", {
+    description: "Check system + pi-pro config",
+    handler: async (_args, ctx) => {
+      const lines = ["pi-pro doctor", "─".repeat(40)];
+      try {
+        const cfg = loadConfig();
+        const key = getEnvKey(cfg.provider.name);
+        lines.push(`  provider:  ${cfg.provider.name}`);
+        lines.push(`  model:     ${cfg.provider.model}`);
+        lines.push(`  api key:   ${key ? `✓ ${maskKey(key)}` : "✗ (no key in env)"}`);
+        lines.push(`  mode:      ${cfg.agent.name}${cfg.agent.name === "plan" ? " (read-only)" : ""}`);
+        lines.push(`  cwd:       ${process.cwd()}`);
+        const git = readGit(process.cwd());
+        if (git.branch) {
+          const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, detectNerdFonts());
+          lines.push(`  git:       ${git.branch} ${summary.icons}`);
+        }
+        const runtime = detectRuntime(process.cwd());
+        if (runtime) lines.push(`  runtime:   ${formatRuntime(runtime)}`);
+      } catch (e) {
+        lines.push(`  error: ${(e as Error).message}`);
+      }
+      ctx.ui.notify(lines.join("\n"), "info");
+    },
+  });
+
+  type TodoDetails = { items: TodoItem[]; nextId: number; action?: "list" | "add" | "toggle" | "clear"; error?: string; addedId?: number };
 
   pi.registerTool({
     name: "todo",
@@ -218,160 +381,164 @@ When execution starts, mark steps done with [DONE:n] markers.`;
       id: Type.Optional(Type.Number()),
     }),
     async execute(_id, params) {
-      const p = params as { action: string; text?: string; id?: number };
+      const p = params as { action: "list" | "add" | "toggle" | "clear"; text?: string; id?: number };
+      const text = (s: string) => [{ type: "text" as const, text: s }];
       if (p.action === "list") {
         return {
-          content: [{ type: "text", text: renderTodos(todoState) }],
-          details: { items: todoState.items, nextId: todoState.nextId, action: "list" },
+          content: text(renderTodos(todoState)),
+          details: { items: todoState.items, nextId: todoState.nextId, action: "list" as const } as TodoDetails,
         };
       }
       if (p.action === "add") {
         const r = todoAdd(todoState, p.text ?? "");
         if (r.error) {
-          return { content: [{ type: "text", text: `error: ${r.error}` }], details: { items: todoState.items, nextId: todoState.nextId, error: r.error } };
+          return {
+            content: text(`error: ${r.error}`),
+            details: { items: todoState.items, nextId: todoState.nextId, error: r.error } as TodoDetails,
+          };
         }
         todoState.items = r.state.items;
         todoState.nextId = r.state.nextId;
         const added = r.item!;
         return {
-          content: [{ type: "text", text: `added #${added.id}: ${added.text}` }],
-          details: { items: todoState.items, nextId: todoState.nextId, action: "add", addedId: added.id },
+          content: text(`added #${added.id}: ${added.text}`),
+          details: { items: todoState.items, nextId: todoState.nextId, action: "add" as const, addedId: added.id } as TodoDetails,
         };
       }
       if (p.action === "toggle") {
         if (p.id === undefined) {
-          return { content: [{ type: "text", text: "error: id required for toggle" }], details: { items: todoState.items, nextId: todoState.nextId, error: "id required" } };
+          return {
+            content: text("error: id required for toggle"),
+            details: { items: todoState.items, nextId: todoState.nextId, error: "id required" } as TodoDetails,
+          };
         }
         const r = todoToggle(todoState, p.id);
         todoState.items = r.state.items;
         todoState.nextId = r.state.nextId;
         if (r.error) {
-          return { content: [{ type: "text", text: `error: ${r.error}` }], details: { items: todoState.items, nextId: todoState.nextId, error: r.error } };
+          return {
+            content: text(`error: ${r.error}`),
+            details: { items: todoState.items, nextId: todoState.nextId, error: r.error } as TodoDetails,
+          };
         }
-        return { content: [{ type: "text", text: `toggled #${p.id}` }], details: { items: todoState.items, nextId: todoState.nextId, action: "toggle" } };
+        return {
+          content: text(`toggled #${p.id}`),
+          details: { items: todoState.items, nextId: todoState.nextId, action: "toggle" as const } as TodoDetails,
+        };
       }
       if (p.action === "clear") {
         const cleared = todoState.items.length;
         const fresh = todoClear();
         todoState.items = fresh.items;
         todoState.nextId = fresh.nextId;
-        return { content: [{ type: "text", text: `cleared ${cleared} todo(s)` }], details: { items: [], nextId: 1, action: "clear" } };
+        return {
+          content: text(`cleared ${cleared} todo(s)`),
+          details: { items: [], nextId: 1, action: "clear" as const } as TodoDetails,
+        };
       }
-      return { content: [{ type: "text", text: `unknown action: ${p.action}` }] };
-    },
-  });
-
-  pi.registerCommand("todos", {
-    description: "Show current todo list",
-    handler: async (_args, _ctx) => {
-      _ctx.ui.notify(renderTodos(todoState), "info");
-    },
-  });
-
-  pi.registerCommand("config", {
-    description: "Show pi-pro config",
-    handler: async (_args, _ctx) => {
-      try {
-        const cfg = loadConfig();
-        const lines = [
-          `pi-pro config · v0.1.0`,
-          `─`.repeat(40),
-          `  provider:  ${cfg.provider.name}`,
-          `  model:     ${cfg.provider.model}`,
-          cfg.provider.baseUrl ? `  baseUrl:   ${cfg.provider.baseUrl}` : "",
-          `  agent:     ${cfg.agent.name}`,
-          `  max iter:  ${cfg.agent.maxIterations}`,
-          `  tool budget: ${cfg.agent.toolBudget}`,
-        ].filter(Boolean);
-        _ctx.ui.notify(lines.join("\n"), "info");
-      } catch (e) {
-        _ctx.ui.notify(`error loading config: ${(e as Error).message}`, "error");
-      }
-    },
-  });
-
-  pi.registerCommand("doctor", {
-    description: "Check system + pi-pro config",
-    handler: async (_args, _ctx) => {
-      const lines = ["pi-pro doctor", "─".repeat(40)];
-      try {
-        const cfg = loadConfig();
-        const key = getEnvKey(cfg.provider.name);
-        lines.push(`  provider:  ${cfg.provider.name}`);
-        lines.push(`  model:     ${cfg.provider.model}`);
-        lines.push(`  api key:   ${key ? `✓ ${maskKey(key)}` : "✗ (no key in env)"}`);
-        lines.push(`  mode:      ${cfg.agent.name}${cfg.agent.name === "plan" ? " (read-only)" : ""}`);
-        lines.push(`  cwd:       ${process.cwd()}`);
-      } catch (e) {
-        lines.push(`  error: ${(e as Error).message}`);
-      }
-      _ctx.ui.notify(lines.join("\n"), "info");
+      return {
+        content: text(`unknown action: ${p.action}`),
+        details: { items: todoState.items, nextId: todoState.nextId, error: `unknown action: ${p.action}` } as TodoDetails,
+      };
     },
   });
 
   pi.registerCommand("memory-add", {
-    description: "Add a chunk to cross-session memory (v0.7.0+ feature placeholder)",
-    handler: async (args, _ctx) => {
+    description: "Add a chunk to cross-session memory",
+    handler: async (args, ctx) => {
       const text = args?.trim();
       if (!text) {
-        _ctx.ui.notify("usage: /memory-add <text>", "error");
+        ctx.ui.notify("usage: /memory-add <text>", "error");
         return;
       }
-      _ctx.ui.notify(`memory-add is a v0.7.0 feature; in v0.1.0 it's a placeholder.`, "info");
-      _ctx.ui.notify(`would store: ${text.slice(0, 100)}`, "info");
+      const r = addMemory(memState, text, "narrative");
+      Object.assign(memState, r.state);
+      ctx.ui.notify(`✓ added #${r.entry.ts} (${memState.entries.length} total)`, "info");
     },
   });
 
   pi.registerCommand("memory-list", {
-    description: "List memory sources (v0.7.0+ feature placeholder)",
-    handler: async (_args, _ctx) => {
-      _ctx.ui.notify("(no memory sources in v0.1.0; placeholder)", "info");
+    description: "List memory entries (newest first)",
+    handler: async (_args, ctx) => {
+      const entries = listMemory(memState);
+      if (entries.length === 0) {
+        ctx.ui.notify("(no memory entries)", "info");
+        return;
+      }
+      const lines = entries.slice(0, 20).map((e) => `  #${e.ts} [${e.role}] ${e.text.slice(0, 80)}`);
+      if (entries.length > 20) lines.push(`  ... and ${entries.length - 20} more`);
+      ctx.ui.notify(lines.join("\n"), "info");
     },
   });
 
   pi.registerCommand("memory-search", {
-    description: "Search memory (v0.7.0+ feature placeholder)",
-    handler: async (args, _ctx) => {
-      const q = args?.trim() ?? "";
+    description: "Search memory entries",
+    handler: async (args, ctx) => {
+      const q = args?.trim();
       if (!q) {
-        _ctx.ui.notify("usage: /memory-search <query>", "error");
+        ctx.ui.notify("usage: /memory-search <query>", "error");
         return;
       }
-      _ctx.ui.notify(`(v0.1.0 placeholder; would search: ${q})`, "info");
+      const results = searchMemory(memState, q, 5);
+      if (results.length === 0) {
+        ctx.ui.notify(`no matches for: ${q}`, "info");
+        return;
+      }
+      const lines = results.map((e) => `  #${e.ts} [${e.role}] ${e.text.slice(0, 100)}`);
+      ctx.ui.notify(lines.join("\n"), "info");
+    },
+  });
+
+  pi.registerCommand("memory-clear", {
+    description: "Clear all memory entries",
+    handler: async (_args, ctx) => {
+      const n = memState.entries.length;
+      const fresh = clearMemory(memState);
+      Object.assign(memState, fresh);
+      ctx.ui.notify(`✓ cleared ${n} entries`, "info");
     },
   });
 
   pi.registerCommand("btw", {
-    description: "Side question (v0.7.0+ feature placeholder; pi-mono handles natively)",
-    handler: async (args, _ctx) => {
-      const q = args?.trim() ?? "";
+    description: "Side question (queues a message to the agent without polluting main history)",
+    handler: async (args, ctx) => {
+      const q = args?.trim();
       if (!q) {
-        _ctx.ui.notify("usage: /btw <question>", "error");
+        ctx.ui.notify("usage: /btw <question>", "error");
         return;
       }
-      _ctx.ui.notify(`(v0.1.0 placeholder; would btw: ${q.slice(0, 100)})`, "info");
+      pi.sendUserMessage(`[side question, no edit] ${q}`);
+      ctx.ui.notify(`queued btw: ${q.slice(0, 80)}`, "info");
     },
   });
 
   pi.registerCommand("context", {
-    description: "Show context budget breakdown (v0.7.0+ feature placeholder)",
-    handler: async (_args, _ctx) => {
-      _ctx.ui.notify("(v0.1.0 placeholder; would show context stats)", "info");
+    description: "Show context budget breakdown",
+    handler: async (_args, ctx) => {
+      const usage = (ctx as { getContextUsage?: () => { tokens: number; contextWindow: number; percent: number } | null }).getContextUsage?.();
+      if (!usage) {
+        ctx.ui.notify("(context usage not available)", "info");
+        return;
+      }
+      const fmt = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
+      const color = usage.percent < 0.75 ? "✓" : usage.percent < 0.9 ? "!" : "!!";
+      ctx.ui.notify(`ctx: ${fmt(usage.tokens)}/${fmt(usage.contextWindow)} (${Math.round(usage.percent * 100)}%) ${color}`, "info");
     },
   });
 
   pi.registerShortcut("tab", {
-    description: "Cycle agent mode (build ↔ plan)",
+    description: "Cycle agent mode (build ↔ plan). Overrides built-in Tab.",
     handler: async (_ctx) => {
       const current = getCurrentModeName();
       const next = cycleModeCfg(current, getDefaultModes());
       setModeName(next);
       applyActiveTools(next);
-      updateModeStatus(next);
       _ctx.ui.notify(`mode: ${current} → ${next}`, "info");
     },
   });
 
-  void cycleModeCfg;
-  void planSystemPrompt;
+  void updateModeBadge;
+  void rebuildFooter;
+  void parsePorcelain;
+  void formatStatusIcons;
 }

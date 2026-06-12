@@ -54,7 +54,7 @@ pi-pro/
 └── .gitignore
 ```
 
-## Features in v0.1.0
+## Features in v0.2.0 (in progress)
 
 - `:mode` command — show/cycle/set agent mode (build ↔ plan)
 - `:plan` command — toggle plan mode (read-only)
@@ -64,16 +64,32 @@ pi-pro/
 - `:doctor` command — system check
 - `Tab` shortcut in editor — cycle agent mode
 - Plan mode: DESTRUCTIVE_PATTERNS bash gate + tool allowlist
+- **Starship-style footer** via `ctx.ui.setStatus` (cwd + branch + git icons + runtime + mode)
+- **Plan widget** via `ctx.ui.setWidget` (parses `Plan:` headers + `[DONE:n]` markers)
+- **Memory store** — file-based JSONL at `~/.pi/pi-pro/memory.jsonl`, commands: `/memory-add`, `/memory-list`, `/memory-search`, `/memory-clear`
+- **Runtime detection** — 26+ languages, format via `formatRuntime(runtime)`
+- **Git status parser** — porcelain parse, Nerd Font icons (or ASCII fallback)
+- `/btw` — side question
+- `/context` — context budget breakdown
 - Config: `~/.pi/pi.json` (provider/agent/theme/ui/modes)
 
 ## Releases
 
-### v0.1.0 — clean reinstall (current, 2026-06-12)
+### v0.2.0 — full feature parity as extension (in progress, 2026-06-12)
+
+- 91 tests pass (27 config + 64 extension)
+- Typecheck clean
+- pi loads the extension without errors (verified via `pi -e ./packages/pi-pro-ext --print`)
+- Index.ts wired with: footer, plan widget, memory ops, runtime/git detection, agent mode cycle, Tab shortcut, todo tool, all REPL commands
+- Cast `(ctx.ui as { setStatus?: ... }).setStatus?.(...)` — TypeBox doesn't expose ctx.ui's full API
+
+### v0.1.0 — clean reinstall (2026-06-12)
 
 - Hard wipe: nuked old 19-package monorepo, re-init from scratch
 - pi-mono v0.79.1 installed via oficial curl installer
 - pi-pro ships as a single-file extension
 - TDD: 100% test coverage on @pi-pro/config
+- 27 tests pass
 
 ## Deferred
 
