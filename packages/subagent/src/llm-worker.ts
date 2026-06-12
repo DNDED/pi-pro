@@ -6,6 +6,7 @@ import type { ContextManager, BtwResult, ContextStats, ContextMessage } from "@p
 import { StepContext, SubagentResult, Tool } from "./types.js";
 import { buildRoleSystemPrompt } from "./role-prompt.js";
 import { detectLanguageFromPaths, formatCodeExamples } from "./code-examples.js";
+import { gateToolCall } from "./tool-gate.js";
 
 export interface ToolInstance {
   name: Tool;
@@ -60,6 +61,10 @@ export class LlmWorker {
   private readonly parallelTools: boolean;
   private readonly contextManager: ContextManager | undefined;
   private readonly contextRole: string | undefined;
+  /** v0.8.4: optional active tool set (null = all tools allowed). */
+  private activeTools: Set<string> | null = null;
+  /** v0.8.4: optional bash allowlist (used with activeTools for plan mode). */
+  private bashAllowlist: RegExp[] | null = null;
   /** v0.5.0: per-session cost accumulator. */
   private totalCostUsd = 0;
   /** v0.5.0: per-session cache hit counter. */
@@ -120,6 +125,26 @@ export class LlmWorker {
    *  Returns null if no run() has happened yet. */
   getLastTurnUsage(): { tokensIn: number; tokensOut: number; costUsd: number; durationMs: number; toolCalls: number; turnNumber: number } | null {
     return this.lastTurnUsage;
+  }
+
+  /** v0.8.4: restrict which tools can be called (null = all tools). */
+  setActiveTools(tools: string[] | null): void {
+    this.activeTools = tools ? new Set(tools) : null;
+  }
+
+  /** v0.8.4: get current active tools (null = all). */
+  getActiveTools(): string[] | null {
+    return this.activeTools ? [...this.activeTools] : null;
+  }
+
+  /** v0.8.4: set bash allowlist (regex patterns). Used with setActiveTools for plan mode. */
+  setBashAllowlist(patterns: RegExp[] | null): void {
+    this.bashAllowlist = patterns;
+  }
+
+  /** v0.8.4: get current bash allowlist. */
+  getBashAllowlist(): RegExp[] | null {
+    return this.bashAllowlist ? [...this.bashAllowlist] : null;
   }
 
   /** v0.8.0: delta since previous run() invocation (cross-run deltas).
@@ -309,6 +334,12 @@ export class LlmWorker {
             return { type: "tool_result", tool_use_id: tc.id, content: `Tool "${tc.name}" is not allowed for role "${role}".`, is_error: true };
           }
           const args = (tc.args ?? {}) as Record<string, unknown>;
+
+          // v0.8.4: agent mode gate (e.g. plan mode restricts to read-only tools + bash allowlist).
+          const gate = gateToolCall(tc.name, args, this.activeTools, this.bashAllowlist ?? undefined);
+          if (!gate.allowed) {
+            return { type: "tool_result", tool_use_id: tc.id, content: gate.reason ?? "Blocked by tool gate.", is_error: true };
+          }
 
           // v0.5.0: tool result cache. Read/grep/glob etc. are memoized
           // for the session. Invalidated on file changes.
