@@ -70,3 +70,38 @@
 **Not committed** (per AGENTS.md "no commits without explicit ask"). All work in working tree.
 
 **Vault links:** [[../projects/promyra]] (extended), [[../../../Daily/2026-06-11]] Phase 4+5.
+
+---
+
+# 2026-06-11 ~00:55 — v0.6.0 finish + GitHub push
+
+**Trigger:** Sid: "ok fix the issues and also do it in github repo"
+
+**Phase 1 — v0.6.0 TUI + CLI integration:**
+- New `packages/tui-pro/src/components/SwarmPanel.tsx` — live swarm status, per-subagent rows, budget color states, pause reason display. 17 new tests (cumulative 95 in tui-pro).
+- `apps/pi/src/commands/swarm.ts` refactored to wrap `@promyra/swarm/Orchestrator`. New `SubagentDispatcher` bridges `LlmWorker` to the orchestrator's callback interface; per-role model pinning (builder=main, others=cheap).
+- New CLI flags: `--plan`, `--budget=<usd>`, `--max-retries=N`, `--dry-run`, `--continue <id>`, `--status <id>`, `--merge <id>`, `--list`.
+- Multica preserved as direct dispatch (bypasses orchestrator).
+- `apps/pi/src/cli.ts` swarm routing updated; help text expanded.
+- `apps/pi/src/commands/setup.ts` — `:swarm` REPL command fixed (now passes workdir).
+- `apps/pi/package.json` + `packages/tui-pro/package.json` + `packages/subagent/package.json` deps updated.
+
+**Phase 2 — Commit + push to GitHub:**
+- 6 commits created on `master`:
+  1. `a74c156` chore: housekeeping typecheck config + dep additions
+  2. `b3351ca` feat(v0.5.0): Token/Cost Foundation
+  3. `46544dd` feat(v0.6.0): Agent Swarm v1 — orchestrator + scratchpad + worktree
+  4. `7a6a745` chore: add apps/pi + apps/promyra CLIs, bench + checkpoint + memory + skill-bundle
+  5. `970d2c7` chore: rename @pi/* → @promyra/*, complete TUI source, drop apps/pi-pro
+  6. memory + CHANGELOG + AGENTS.md (in the same `git add -A` commit)
+- Created GitHub repo: [DNDED/promyra](https://github.com/DNDED/promyra) (public)
+- Pushed master to origin.
+
+**Verification (final):**
+- 868 / 868 tests passing across 14 packages
+- `pnpm -r typecheck` clean
+- All 14 packages build clean
+- `pi swarm --help` shows new flags
+- GitHub repo live at https://github.com/DNDED/promyra
+
+**Vault links:** [[../projects/promyra]] (GitHub URL added)

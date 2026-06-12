@@ -8,6 +8,10 @@ repo: /home/trader/pi-pro (was: /home/trader/Developer/pi-pro — symlink-equiva
 
 Sid's improved coding agent — TypeScript fork of [pi-mono](https://github.com/earendil-works/pi) (Mario Zechner's minimal coding agent). Position: beat Claude Code and OpenCode on the same model via cost optimization, agent swarm, and better telemetry.
 
+**GitHub:** [DNDED/promyra](https://github.com/DNDED/promyra) (public, created 2026-06-11)
+**Owner:** [DNDED](https://github.com/DNDED) on GitHub
+**Local:** `/home/trader/Developer/pi-pro` (master branch, tracks `origin/master`)
+
 ## Why this exists
 
 - `pi-mono` upstream is intentionally minimal (4 tools, no MCP, no plan mode, no sub-agents) and Mario's "fork it" stance invites derivatives.
