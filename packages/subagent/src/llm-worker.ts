@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
-import { Provider, Message, CallOpts, Tool as ProviderTool, StreamChunk } from "@promyra/provider";
-import { Optimizer, type TurnContext } from "@promyra/optimizer";
-import { ToolResultCache } from "@promyra/cache";
+import { Provider, Message, CallOpts, Tool as ProviderTool, StreamChunk } from "@pi/provider";
+import { Optimizer, type TurnContext } from "@pi/optimizer";
+import { ToolResultCache } from "@pi/cache";
+import type { ContextManager, BtwResult, ContextStats, ContextMessage } from "@pi/context-manager";
 import { StepContext, SubagentResult, Tool } from "./types.js";
 import { buildRoleSystemPrompt } from "./role-prompt.js";
 import { detectLanguageFromPaths, formatCodeExamples } from "./code-examples.js";
@@ -27,7 +28,10 @@ export interface LlmWorkerOpts {
   toolCache?: ToolResultCache;
   /** v0.5.0: enable parallel tool execution. Default true. */
   parallelTools?: boolean;
-  /** v0.5.0: tool budget exceeded behavior unchanged; surfaces for tests. */
+  /** v0.7.0: optional context manager for sliding window + compression + /btw. */
+  contextManager?: ContextManager;
+  /** v0.7.0: role used for context lookup. Defaults to first param of run(). */
+  contextRole?: string;
 }
 
 const DEFAULT_MAX_ITERATIONS = 10;
@@ -54,6 +58,8 @@ export class LlmWorker {
   private readonly optimizer: Optimizer | undefined;
   private readonly toolCache: ToolResultCache | undefined;
   private readonly parallelTools: boolean;
+  private readonly contextManager: ContextManager | undefined;
+  private readonly contextRole: string | undefined;
   /** v0.5.0: per-session cost accumulator. */
   private totalCostUsd = 0;
   /** v0.5.0: per-session cache hit counter. */
@@ -75,6 +81,8 @@ export class LlmWorker {
     this.optimizer = opts.optimizer;
     this.toolCache = opts.toolCache;
     this.parallelTools = opts.parallelTools ?? true;
+    this.contextManager = opts.contextManager;
+    this.contextRole = opts.contextRole;
     this.toolMap = new Map(tools.map(t => [t.name, t]));
     this.toolList = tools.map(t => ({
       name: t.name,
@@ -89,16 +97,37 @@ export class LlmWorker {
   /** v0.5.0: count of tool cache hits in this session. */
   getCacheHits(): number { return this.totalCacheHits; }
 
+  /** v0.7.0: context manager stats (or null if no contextManager configured). */
+  getContextStats(): ContextStats | null {
+    return this.contextManager ? this.contextManager.getStats() : null;
+  }
+
+  /** v0.7.0: side question via context manager (separate LLM call). */
+  async runBtw(question: string): Promise<BtwResult> {
+    if (!this.contextManager) {
+      throw new Error("LlmWorker.runBtw: contextManager not configured");
+    }
+    return this.contextManager.runBtw(question);
+  }
+
   async run(role: string, context: StepContext): Promise<SubagentResult> {
     const start = Date.now();
     const roleDefault = DEFAULT_PER_ROLE_TOOL_BUDGETS[role];
     const effectiveBudget = this.toolBudgets?.[role]
       ?? this.toolBudget
       ?? (roleDefault !== undefined ? roleDefault : DEFAULT_TOOL_BUDGET);
-    const messages: Message[] = [
+    let messages: Message[] = [
       { role: "system", content: this.systemPrompt(role) },
       { role: "user", content: this.userPrompt(role, context) },
     ];
+
+    if (this.contextManager) {
+      const compressed = await this.contextManager.maybeCompress(this.toContextMessages(messages));
+      if (compressed.compressed) {
+        messages = this.fromContextMessages(this.contextManager.getCompressedMessages(), messages);
+      }
+    }
+
     const opts: CallOpts = {
       model: this.model ?? "",
       tools: this.toolList,
@@ -108,6 +137,7 @@ export class LlmWorker {
     let tokensIn = 0;
     let tokensOut = 0;
     let cumulativeTools = 0;
+    let totalCost = 0;
 
     for (let i = 0; i < this.maxIterations; i++) {
       // v0.5.0: wrap LLM call with optimizer if provided. The optimizer
@@ -124,7 +154,7 @@ export class LlmWorker {
             userMessage: messages[messages.length - 1],
             mainModel: this.model ?? "",
             provider: this.provider.name,
-            cacheKey: `promyra-${role}-${context.taskId}`,
+            cacheKey: `pi-pro-${role}-${context.taskId}`,
           };
           const optimized = this.optimizer.optimize(turn);
           stream = this.provider.complete(optimized.messages, {
@@ -164,6 +194,17 @@ export class LlmWorker {
               chunk.usage.cacheReadTokens ?? 0,
               chunk.usage.cacheWriteTokens ?? 0,
             );
+            totalCost = this.totalCostUsd;
+          }
+          if (chunk.usage.costUsd !== undefined) {
+            totalCost = this.totalCostUsd + chunk.usage.costUsd;
+          }
+          // v0.7.0: record usage in context manager
+          if (this.contextManager) {
+            this.contextManager.recordUsage({
+              tokens: chunk.usage.in + chunk.usage.out,
+              costUsd: chunk.usage.costUsd,
+            });
           }
           doneSeen = true;
         }
@@ -512,5 +553,26 @@ export class LlmWorker {
     patterns.push("- Match the EXACT existing code style (indentation, quotes, semicolons)");
 
     return patterns.join("\n");
+  }
+
+  private toContextMessages(messages: Message[]): ContextMessage[] {
+    return messages.map((m) => ({
+      role: m.role as ContextMessage["role"],
+      content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+    }));
+  }
+
+  private fromContextMessages(
+    compressed: ContextMessage[],
+    original: Message[],
+  ): Message[] {
+    if (compressed.length === 0) return original;
+    return compressed.map((cm) => {
+      const orig = original.find(
+        (o) => o.role === cm.role && (typeof o.content === "string" ? o.content : JSON.stringify(o.content)) === cm.content,
+      );
+      if (orig) return orig;
+      return { role: cm.role, content: cm.content } as Message;
+    });
   }
 }
