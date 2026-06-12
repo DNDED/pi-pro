@@ -33,7 +33,7 @@ import {
   type MemoryState,
 } from "./src/memory.js";
 
-const VERSION = "0.2.3";
+const VERSION = "0.2.4";
 const STATUS_KEY = "pi-pro";
 const WIDGET_KEY = "pi-pro-plan";
 
@@ -52,13 +52,9 @@ function getCurrentModeName(): string {
 }
 
 function setModeName(name: string): void {
-  try {
-    const cfg = loadConfig();
-    cfg.agent.name = name;
-    saveConfig(cfg);
-  } catch {
-    // best-effort
-  }
+  const cfg = loadConfig();
+  cfg.agent.name = name;
+  saveConfig(cfg);
 }
 
 function readGit(cwd: string): { branch: string | null; ahead: number; behind: number; porcelain: string } {
@@ -126,11 +122,10 @@ function hasAuth(provider: string): { ok: boolean; source: "env" | "auth.json" |
 }
 
 function buildStatusLine(version: string, mode: string, nerdFonts: boolean): string {
-  const cwd = process.cwd().split("/").filter(Boolean).pop() ?? "/";
-  const cwdIcon = nerdFonts ? "" : "";
   const isPlan = mode === "plan";
-  const modeBadge = isPlan ? "PLAN RO" : "BUILD";
-  return `v${version} ${modeBadge} · ${cwdIcon}${cwd}`;
+  const modeIcon = nerdFonts ? (isPlan ? "" : "") : (isPlan ? "[!]" : "[+]");
+  const modeLabel = isPlan ? "PLAN" : "BUILD";
+  return `${modeIcon} ${modeLabel} v${version}`;
 }
 
 function todoAdd(state: { items: TodoItem[]; nextId: number }, text: string): { state: { items: TodoItem[]; nextId: number }; item?: TodoItem; error?: string } {
