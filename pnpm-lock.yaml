@@ -32,6 +32,9 @@ importers:
       '@pi/cache':
         specifier: workspace:*
         version: link:../../packages/cache
+      '@pi/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@pi/context-manager':
         specifier: workspace:*
         version: link:../../packages/context-manager
@@ -151,6 +154,22 @@ importers:
       chokidar:
         specifier: ^3.6.0
         version: 3.6.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
+  packages/config:
+    dependencies:
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.42
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -361,6 +380,9 @@ importers:
 
   packages/tui-pro:
     dependencies:
+      '@pi/config':
+        specifier: workspace:*
+        version: link:../config
       '@pi/context-manager':
         specifier: workspace:*
         version: link:../context-manager
