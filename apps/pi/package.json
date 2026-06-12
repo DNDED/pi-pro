@@ -1,0 +1,32 @@
+{
+  "name": "pi",
+  "version": "0.1.0",
+  "description": "Minimal coding agent — single LlmWorker, text output, separate ~/.pi/ config",
+  "type": "module",
+  "bin": {
+    "pi": "./bin/pi"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@promyra/bench": "workspace:*",
+    "@promyra/optimizer": "workspace:*",
+    "@promyra/provider": "workspace:*",
+    "@promyra/subagent": "workspace:*",
+    "@promyra/swarm": "workspace:*",
+    "@promyra/tasks": "workspace:*",
+    "@promyra/tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

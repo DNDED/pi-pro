@@ -1,5 +1,5 @@
 {
-  "name": "@pi/subagent",
+  "name": "@promyra/subagent",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,8 +17,10 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@pi/provider": "workspace:*",
-    "@pi/tools": "workspace:*",
+    "@promyra/cache": "workspace:*",
+    "@promyra/optimizer": "workspace:*",
+    "@promyra/provider": "workspace:*",
+    "@promyra/tools": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

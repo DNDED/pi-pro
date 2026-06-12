@@ -24,35 +24,29 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)
 
-  apps/pi-pro:
+  apps/pi:
     dependencies:
-      '@pi/bench':
+      '@promyra/bench':
         specifier: workspace:*
         version: link:../../bench
-      '@pi/checkpoint':
+      '@promyra/optimizer':
         specifier: workspace:*
-        version: link:../../packages/checkpoint
-      '@pi/memory':
-        specifier: workspace:*
-        version: link:../../packages/memory
-      '@pi/provider':
+        version: link:../../packages/optimizer
+      '@promyra/provider':
         specifier: workspace:*
         version: link:../../packages/provider
-      '@pi/skill-bundle':
-        specifier: workspace:*
-        version: link:../../packages/skill-bundle
-      '@pi/subagent':
+      '@promyra/subagent':
         specifier: workspace:*
         version: link:../../packages/subagent
-      '@pi/tasks':
+      '@promyra/swarm':
+        specifier: workspace:*
+        version: link:../../packages/swarm
+      '@promyra/tasks':
         specifier: workspace:*
         version: link:../../packages/tasks
-      '@pi/tui-pro':
+      '@promyra/tools':
         specifier: workspace:*
-        version: link:../../packages/tui-pro
-      commander:
-        specifier: ^12.0.0
-        version: 12.1.0
+        version: link:../../packages/tools
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -64,21 +58,95 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)
 
+  apps/promyra:
+    dependencies:
+      '@promyra/bench':
+        specifier: workspace:*
+        version: link:../../bench
+      '@promyra/checkpoint':
+        specifier: workspace:*
+        version: link:../../packages/checkpoint
+      '@promyra/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
+      '@promyra/provider':
+        specifier: workspace:*
+        version: link:../../packages/provider
+      '@promyra/skill-bundle':
+        specifier: workspace:*
+        version: link:../../packages/skill-bundle
+      '@promyra/subagent':
+        specifier: workspace:*
+        version: link:../../packages/subagent
+      '@promyra/tasks':
+        specifier: workspace:*
+        version: link:../../packages/tasks
+      '@promyra/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
+      '@promyra/tui-pro':
+        specifier: workspace:*
+        version: link:../../packages/tui-pro
+      commander:
+        specifier: ^12.0.0
+        version: 12.1.0
+      ink:
+        specifier: ^5.0.1
+        version: 5.2.1(@types/react@18.3.31)(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.42
+      '@types/react':
+        specifier: ^18.3.0
+        version: 18.3.31
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
   bench:
     dependencies:
-      '@pi/provider':
+      '@promyra/cache':
+        specifier: workspace:*
+        version: link:../packages/cache
+      '@promyra/optimizer':
+        specifier: workspace:*
+        version: link:../packages/optimizer
+      '@promyra/provider':
         specifier: workspace:*
         version: link:../packages/provider
-      '@pi/subagent':
+      '@promyra/repo-map':
+        specifier: workspace:*
+        version: link:../packages/repo-map
+      '@promyra/subagent':
         specifier: workspace:*
         version: link:../packages/subagent
-      '@pi/tools':
+      '@promyra/tools':
         specifier: workspace:*
         version: link:../packages/tools
     devDependencies:
       tsx:
         specifier: ^4.19.0
         version: 4.22.4
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
+  packages/cache:
+    dependencies:
+      '@promyra/provider':
+        specifier: workspace:*
+        version: link:../provider
+    devDependencies:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -108,11 +176,36 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)
 
+  packages/optimizer:
+    dependencies:
+      '@promyra/cache':
+        specifier: workspace:*
+        version: link:../cache
+      '@promyra/provider':
+        specifier: workspace:*
+        version: link:../provider
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
   packages/provider:
     dependencies:
       zod:
         specifier: ^3.23.0
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
+  packages/repo-map:
     devDependencies:
       typescript:
         specifier: ^5.4.0
@@ -136,10 +229,16 @@ importers:
 
   packages/subagent:
     dependencies:
-      '@pi/provider':
+      '@promyra/cache':
+        specifier: workspace:*
+        version: link:../cache
+      '@promyra/optimizer':
+        specifier: workspace:*
+        version: link:../optimizer
+      '@promyra/provider':
         specifier: workspace:*
         version: link:../provider
-      '@pi/tools':
+      '@promyra/tools':
         specifier: workspace:*
         version: link:../tools
       zod:
@@ -153,12 +252,40 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)
 
+  packages/swarm:
+    dependencies:
+      '@promyra/cache':
+        specifier: workspace:*
+        version: link:../cache
+      '@promyra/optimizer':
+        specifier: workspace:*
+        version: link:../optimizer
+      '@promyra/provider':
+        specifier: workspace:*
+        version: link:../provider
+      '@promyra/subagent':
+        specifier: workspace:*
+        version: link:../subagent
+      '@promyra/tasks':
+        specifier: workspace:*
+        version: link:../tasks
+      '@promyra/tools':
+        specifier: workspace:*
+        version: link:../tools
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)
+
   packages/tasks:
     dependencies:
-      '@pi/checkpoint':
+      '@promyra/checkpoint':
         specifier: workspace:*
         version: link:../checkpoint
-      '@pi/memory':
+      '@promyra/memory':
         specifier: workspace:*
         version: link:../memory
       zod:
@@ -189,9 +316,24 @@ importers:
 
   packages/tui-pro:
     dependencies:
+      '@promyra/provider':
+        specifier: workspace:*
+        version: link:../provider
+      '@promyra/swarm':
+        specifier: workspace:*
+        version: link:../swarm
+      '@promyra/tools':
+        specifier: workspace:*
+        version: link:../tools
       ink:
         specifier: ^5.0.1
         version: 5.2.1(@types/react@18.3.31)(react@18.3.1)
+      ink-spinner:
+        specifier: ^5.0.0
+        version: 5.0.0(ink@5.2.1(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      ink-testing-library:
+        specifier: ^4.0.0
+        version: 4.0.0(@types/react@18.3.31)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -199,9 +341,6 @@ importers:
       '@types/react':
         specifier: ^18.3.0
         version: 18.3.31
-      ink-testing-library:
-        specifier: ^4.0.0
-        version: 4.0.0(@types/react@18.3.31)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -794,6 +933,10 @@ packages:
     resolution: {integrity: sha512-VGtlMu3x/4DOtIUwEkRezxUZ2lBacNJCHash0N0WeZDBS+7Ux1dm3XWAgWYxLJFMMdOeXMHXorshEFhbMSGelg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  cli-spinners@2.9.2:
+    resolution: {integrity: sha512-ywqV+5MmyL4E7ybXgKys4DugZbX0FC6LnwrhjuykIjnK9k8OQacQ7axGKnjDXWNhns0xot3bZI5h55H8yo9cJg==}
+    engines: {node: '>=6'}
+
   cli-truncate@4.0.0:
     resolution: {integrity: sha512-nPdaFdQ0h/GEigbPClz11D0v/ZJEwxmeVZGeMo3Z5StPtUTkA9o1lD6QwoirYiSDzbcwn2XcjwmCp68W1IS4TA==}
     engines: {node: '>=18'}
@@ -932,6 +1075,13 @@ packages:
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
+
+  ink-spinner@5.0.0:
+    resolution: {integrity: sha512-EYEasbEjkqLGyPOUc8hBJZNuC5GvXGMLu0w5gdTNskPc7Izc5vO3tdQEYnzvshucyGCBXc86ig0ujXPMWaQCdA==}
+    engines: {node: '>=14.16'}
+    peerDependencies:
+      ink: '>=4.0.0'
+      react: '>=18.0.0'
 
   ink-testing-library@4.0.0:
     resolution: {integrity: sha512-yF92kj3pmBvk7oKbSq5vEALO//o7Z9Ck/OaLNlkzXNeYdwfpxMQkSowGTFUCS5MSu9bWfSZMewGpp7bFc66D7Q==}
@@ -1752,6 +1902,8 @@ snapshots:
     dependencies:
       restore-cursor: 4.0.0
 
+  cli-spinners@2.9.2: {}
+
   cli-truncate@4.0.0:
     dependencies:
       slice-ansi: 5.0.0
@@ -1917,6 +2069,12 @@ snapshots:
       wrappy: 1.0.2
 
   inherits@2.0.4: {}
+
+  ink-spinner@5.0.0(ink@5.2.1(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      cli-spinners: 2.9.2
+      ink: 5.2.1(@types/react@18.3.31)(react@18.3.1)
+      react: 18.3.1
 
   ink-testing-library@4.0.0(@types/react@18.3.31):
     optionalDependencies:

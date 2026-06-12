@@ -8,18 +8,19 @@ const TOOLS: Tool[] = ["bash", "read", "write", "edit", "grep", "glob", "webfetc
 // The single source of truth for the security boundary. Any change to this matrix
 // must be intentional and reviewed — this is the lock that prevents privilege
 // escalation between subagent roles.
-const EXPECTED: Record<Role, Record<Tool, boolean>> = {
+const EXPECTED = {
   "build":            { bash: true,  read: true,  write: true,  edit: true,  grep: true,  glob: true,  webfetch: false },
   "test-runner":      { bash: true,  read: true,  write: false, edit: false, grep: true,  glob: true,  webfetch: false },
   "code-reviewer":    { bash: false, read: true,  write: false, edit: false, grep: true,  glob: true,  webfetch: false },
   "security-auditor": { bash: false, read: true,  write: false, edit: false, grep: true,  glob: true,  webfetch: false },
 };
 
-describe("@pi/subagent tool-restrictions", () => {
+describe("@promyra/subagent tool-restrictions", () => {
   describe("full role x tool matrix", () => {
     for (const role of ROLES) {
+      const roleMap = (EXPECTED as Record<string, Record<string, boolean>>)[role];
       for (const tool of TOOLS) {
-        const expected = EXPECTED[role][tool];
+        const expected = roleMap[tool];
         it(`${role} ${expected ? "allows" : "blocks"} ${tool}`, () => {
           expect(isAllowed(role, tool)).toBe(expected);
         });

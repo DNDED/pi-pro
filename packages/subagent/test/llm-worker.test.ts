@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { LlmWorker } from "../src/llm-worker.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
 import { StepContext } from "../src/types.js";
-import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@pi/tools";
+import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@promyra/tools";
 
 class FakeProvider implements Provider {
   name = "fake";
@@ -81,7 +81,7 @@ describe("LlmWorker", () => {
     const w = new LlmWorker(p, [createBashTool()], workdir);
     const r = await w.run("build", ctx());
     expect(r.status).toBe("blocked");
-    expect(r.evidence).toMatch(/JSON status/);
+    expect(r.evidence).toMatch(/determine status/);
   });
 
   it("restricts the tool schema to only the role's allowed tools", async () => {
@@ -105,7 +105,7 @@ describe("LlmWorker", () => {
   it("executes a tool_call and feeds the result back to the model", async () => {
     const p = new FakeProvider();
     p.queue([
-      { type: "tool_call", name: "bash", args: { cmd: "echo test-output" } },
+      { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo test-output" } },
       { type: "done", usage: { in: 0, out: 0 } },
     ]);
     p.queue([
@@ -128,7 +128,7 @@ describe("LlmWorker", () => {
     const p = new FakeProvider();
     for (let i = 0; i < 12; i++) {
       p.queue([
-        { type: "tool_call", name: "bash", args: { cmd: "echo loop" } },
+        { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo loop" } },
         { type: "done", usage: { in: 0, out: 0 } },
       ]);
     }
@@ -142,12 +142,12 @@ describe("LlmWorker", () => {
     const p = new FakeProvider();
     for (let i = 0; i < 5; i++) {
       p.queue([
-        { type: "tool_call", name: "bash", args: { cmd: `echo step${i}` } },
+        { type: "tool_call", id: "x", name: "bash", args: { cmd: `echo step${i}` } },
         { type: "done", usage: { in: 0, out: 0 } },
       ]);
     }
     p.queue([
-      { type: "tool_call", name: "bash", args: { cmd: "echo final" } },
+      { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo final" } },
       { type: "done", usage: { in: 0, out: 0 } },
     ]);
     p.queue([
@@ -169,8 +169,8 @@ describe("LlmWorker", () => {
     const p = new FakeProvider();
     for (let i = 0; i < 7; i++) {
       p.queue([
-        { type: "tool_call", name: "bash", args: { cmd: `echo a${i}` } },
-        { type: "tool_call", name: "bash", args: { cmd: `echo b${i}` } },
+        { type: "tool_call", id: "x", name: "bash", args: { cmd: `echo a${i}` } },
+        { type: "tool_call", id: "x", name: "bash", args: { cmd: `echo b${i}` } },
         { type: "done", usage: { in: 0, out: 0 } },
       ]);
     }
@@ -184,7 +184,7 @@ describe("LlmWorker", () => {
     const p = new FakeProvider();
     for (let i = 0; i < 7; i++) {
       p.queue([
-        { type: "tool_call", name: "bash", args: { cmd: `echo step${i}` } },
+        { type: "tool_call", id: "x", name: "bash", args: { cmd: `echo step${i}` } },
         { type: "done", usage: { in: 0, out: 0 } },
       ]);
     }
@@ -204,7 +204,7 @@ describe("LlmWorker", () => {
   it("applies default per-role tool budgets: test-runner budget=1 triggers force-conclude after 1 tool call", async () => {
     const p = new FakeProvider();
     p.queue([
-      { type: "tool_call", name: "bash", args: { cmd: "echo a" } },
+      { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo a" } },
       { type: "done", usage: { in: 0, out: 0 } },
     ]);
     p.queue([
@@ -224,8 +224,8 @@ describe("LlmWorker", () => {
   it("per-role override via toolBudgets wins over the global toolBudget", async () => {
     const p = new FakeProvider();
     p.queue([
-      { type: "tool_call", name: "bash", args: { cmd: "echo a" } },
-      { type: "tool_call", name: "bash", args: { cmd: "echo b" } },
+      { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo a" } },
+      { type: "tool_call", id: "x", name: "bash", args: { cmd: "echo b" } },
       { type: "done", usage: { in: 0, out: 0 } },
     ]);
     p.queue([
@@ -243,5 +243,60 @@ describe("LlmWorker", () => {
       typeof m.content === "string" && m.content.includes("You have used 2 tools"),
     );
     expect(forceConcludeMsg).toBeDefined();
+  });
+
+  it("parseResult handles unterminated JSON by falling back to keyword detection (pass)", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: '{"status": ' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("blocked");
+    expect(r.evidence).toMatch(/Could not determine status/);
+  });
+
+  it("parseResult falls back to pass keyword when JSON is malformed but text says pass", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: "Tests passed. I completed the task successfully. {status: pass}" },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+  });
+
+  it("parseResult falls back to fail keyword when JSON is malformed but text says fail", async () => {
+    const p = new FakeProvider();
+    p.queue([
+      { type: "token", text: "Tests failed. The build is broken. {status: fail}" },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir);
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("fail");
+  });
+
+  it("injects a nudge message when the provider returns >1500 chars of text with no tool calls", async () => {
+    const p = new FakeProvider();
+    const longText = "thinking ".repeat(400) + "still analyzing ".repeat(400);
+    p.queue([
+      { type: "token", text: longText },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    p.queue([
+      { type: "token", text: '{"status": "pass", "evidence": "finally done"}' },
+      { type: "done", usage: { in: 0, out: 0 } },
+    ]);
+    const w = new LlmWorker(p, [createBashTool()], workdir, { maxThinkingChars: 100, maxIterations: 5 });
+    const r = await w.run("build", ctx());
+    expect(r.status).toBe("pass");
+    const allMessages = p.captured.flatMap(c => c.messages);
+    const nudgeMsg = allMessages.find(m =>
+      typeof m.content === "string" && m.content.includes("Stop analyzing and take action"),
+    );
+    expect(nudgeMsg).toBeDefined();
   });
 });
