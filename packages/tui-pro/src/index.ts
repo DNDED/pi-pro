@@ -28,7 +28,7 @@ export { ErrorMessage } from "./components/ErrorMessage.js";
 export type { ErrorMessageProps } from "./components/ErrorMessage.js";
 export { ToolContent } from "./components/ToolContent.js";
 export type { ToolContentProps } from "./components/ToolContent.js";
-export { PromptInput } from "./components/PromptInput.js";
+export { PromptInput, wordForward, wordBackward } from "./components/PromptInput.js";
 export type { PromptInputProps } from "./components/PromptInput.js";
 export { StatusHints } from "./components/StatusHints.js";
 export type { StatusHintsProps } from "./components/StatusHints.js";
