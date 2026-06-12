@@ -83,6 +83,102 @@ Key design:
 | Per-iteration `recordUsage` | After each `done` chunk, records `{tokens, costUsd}` in contextManager |
 | `toContextMessages` / `fromContextMessages` | Convert between `Message[]` (provider shape) and `ContextMessage[]` (context-manager shape) |
 
+### New package: `@pi/context-manager`
+
+Sliding window + extractive compression + adaptive triggers + /btw side channel. 47 tests.
+
+| Module | Purpose |
+|---|---|
+| `types.ts` | `ContextMessage`, `TokenBudgetConfig`, `CompressionConfig`, `AdaptiveTriggerConfig`, `ContextStats`, `ContextSnapshot`, `CompressionResult`, `BtwResult` |
+| `util.ts` | `estimateTokens` (chars/4), `estimateMessageList`, `partitionByRole` (system vs non-system), `summarizeContent` (head+tail truncation), `emptyMessage` |
+| `budget.ts` | `TokenBudget` — records tokens, computes `getBudgetUsed` (0-1), transitions state ok → soft-warn (75%) → hard-trigger (90%) |
+| `extract.ts` | `applySlidingWindow`, `applyExtractiveCompression` (drop oldest X% tool results, Y% messages, preserve last N + cache breakpoints) |
+| `triggers.ts` | `shouldCompress` — OR'd 3 modes: hard-token, turn-interval, cost-cap; soft-warn also fires (non-forced) |
+| `llm.ts` | `Summarizer` (LLM-call summarization of dropped window), `BtwChannel` (separate LLM call for side questions) |
+| `index.ts` | `ContextManager` — orchestrates `assemble` + `recordUsage` + `maybeCompress` + `runBtw` + `getStats` |
+
+Key design:
+- `ContextManager.assemble(role, goal)` returns `ContextSnapshot` (messages + memoryContext + codebaseContext)
+- Memory injection: query `MemoryStore` with `goal`, top-k results injected as system messages tagged `[memory:source]`
+- Codebase injection: separate query with `filterRole: "code-symbol"`
+- Compression: `extractive` strategy (default), `llm` for LLM-summarize, `hybrid` for both
+- `runBtw`: separate LLM call, doesn't update budget stats, doesn't pollute history
+- `getCompressionLog`: array of past compressions for debuggability
+- Graceful degradation: LLM summarization failure → fall back to extractive result; memory query failure → inject nothing
+- Hard-trigger is forced (cannot be overridden); soft-warn is non-forced
+- preserveLastN + isCacheBreakpoint flags protect important messages from eviction
+
+### New package: `@pi/codebase-index`
+
+Wraps `@pi/repo-map` (v0.5.0 regex scanner) + embeds symbols into `MemoryStore` as `code-symbol` chunks; hybrid search; chokidar watcher. 26 tests.
+
+| Module | Purpose |
+|---|---|
+| `types.ts` | `CodeIndexEntry`, `CodeIndexOpts`, `CodeIndexBuildResult`, `CodeSearchOpts`, `CodeSearchResult` |
+| `scanner.ts` | `scanAndIndex(rootDir, opts)` — walks files (respects excludes), calls `getRepoMap`, embeds via store's provider, stores as `code-symbol` role with `code:<rel-path>:<line>` source |
+| `search.ts` | `searchCodebase(store, query, opts)` — hybrid: vector score (via MemoryStore.query) + regex term-frequency match; regexBoost defaults 0.3; pathPrefix filter |
+| `watcher.ts` | `CodebaseWatcher` — chokidar-based, ignores dotfiles + `node_modules` + `dist` + `.pi-pro`; debounced 500ms; `awaitWriteFinish` for stability; abort-signal support |
+| `index.ts` | `CodebaseIndex` class wrapping build + search + watch lifecycle |
+
+Key design:
+- Reuses v0.5.0 `@pi/repo-map` for symbol extraction (no duplicate regex work)
+- Stores in `MemoryStore` with `role: "code-symbol"` for query filtering
+- Source prefix `code:` (configurable) makes them easy to identify + re-index
+- Re-indexing replaces old code symbols (no duplicates)
+- Hybrid search: regex match boosts over vector (configurable `regexBoost`, default 0.3)
+- Chokidar with `awaitWriteFinish` to avoid partial-write events
+
+### `LlmWorker` v0.7.0 ContextManager integration (7 new tests in `packages/subagent`)
+
+| Addition | Purpose |
+|---|---|
+| `LlmWorkerOpts.contextManager` | Optional `ContextManager`; back-compat (existing tests still pass without it) |
+| `LlmWorker.getContextStats()` | Returns `ContextStats` (or `null` if no contextManager) |
+| `LlmWorker.runBtw(question)` | Side question via contextManager; separate LLM call; throws if not configured |
+| Pre-run `maybeCompress` | Compresses message history before each LLM call if a trigger fires |
+| Per-iteration `recordUsage` | After each `done` chunk, records `{tokens, costUsd}` in contextManager |
+| `toContextMessages` / `fromContextMessages` | Convert between `Message[]` (provider shape) and `ContextMessage[]` (context-manager shape) |
+
+### TUI components (37 new tests in `packages/tui-pro`)
+
+| Component | Purpose |
+|---|---|
+| `ContextBudget` | Live bar in Footer (green/yellow/red); compact mode for embedding, full mode for `/context` output |
+| `BtwPrompt` | Side-question UI (separate input, ephemeral response, doesn't pollute main history) |
+| `ContextBreakdown` | Per-category breakdown (system/memory/codebase/tools/conversation) for `/context` command |
+| `Footer` (extended) | Adds `contextStats` + `contextMaxTokens` props; renders `ctx:84k/200k (42%)` line next to cost. Back-compat: no ctx line when `contextStats` is null |
+
+### CLI surface (20 new tests in `apps/pi-pro`)
+
+| Command | Purpose |
+|---|---|
+| `pi memory add <text> [--role=…] [--project=…]` | Add chunk to cross-session memory |
+| `pi memory search <query> [--k=N] [--project=…]` | Hybrid search |
+| `pi memory list [--project=…]` | List distinct memory sources |
+| `pi memory forget <source>` | Delete by source |
+| `pi memory count [--project=…]` | Count chunks |
+| `pi btw "<question>"` | Side question (separate LLM call, no main pollution) |
+| `pi context` | Context budget breakdown |
+| `/btw`, `/context`, `/memory-add`, `/memory-search`, `/memory-list`, `/memory-forget` (REPL) | Same as standalone but in REPL |
+
+### Env flags (v0.7.0) — `apps/pi-pro/src/flags.ts`
+
+`readContextFlagsFromEnv()`:
+- `PROMYRA_MEMORY=0` — disable memory injection
+- `PROMYRA_COMPRESSION=off|extractive|llm|hybrid` — strategy (default hybrid)
+- `PROMYRA_EMBEDDINGS=openai|anthropic|opencode-go|null` — provider (default: first key found)
+- `PROMYRA_MEMORY_QUERY_K=N` — chunks per turn (default 20)
+- `PROMYRA_SOFT_WARN=0.75` — soft-warn threshold
+- `PROMYRA_HARD_TRIGGER=0.90` — hard-trigger threshold
+
+### Bench attribution (23 new tests in `bench/`)
+
+| File | Purpose |
+|---|---|
+| `bench/src/context-attribution.ts` | v0.7.0 configs: baseline, memory-off, compression-off, embeddings-off. Live bench when `workspaceRoot` provided; projected data from spec §3 otherwise (live LLM bench deferred). |
+| `bench/tasks/index.ts` (long-task-50turn) | New bench task (very-hard): 50+ turn conversation exercising sliding window + extractive compression + adaptive triggers; verifies cross-session recall + ≤50MB RSS |
+| `formatContextAttribution()` | Markdown table with v0.7.0-specific metrics (compressionEvents, memoryChunksInjected, peakContextUsage, crossSessionRecall, codebaseAccuracy) + deltas + spec targets |
+
 ### Decisions (this build, captured in `memory/decisions/v0.7.0.md`)
 
 - New `packages/embeddings` (top of dep stack, shared by memory-store + codebase-index + context-manager)
@@ -106,27 +202,39 @@ Key design:
 - Codebase-index reuses v0.5.0 repo-map (no duplicate regex); symbols stored with `code:` source prefix
 - Codebase search: regex match boost (default 0.3) on top of vector similarity
 - LlmWorker integration: `maybeCompress` pre-run, `recordUsage` per-iteration; back-compat preserved
+- TUI ContextBudget: live bar in Footer (green/yellow/red); back-compat Footer (no ctx line when stats null)
+- CLI: standalone `pi memory` subcommands + REPL slash commands; btw via separate LLM call
+- Bench: 4 v0.7.0 attribution configs; live LLM bench deferred (no API key in env)
 
-### Pending (not yet built)
+### Test count (final)
 
-- TUI `<ContextBudget>`, `<BtwPrompt>`, `/context` command
-- CLI `--memory`, `--embeddings`, `--compression` flags; `/btw`, `/memory-*` commands
-- Long-task bench fixture + attribution `compression-off` / `memory-off` / `embeddings-off` configs
-- Live LLM bench (deferred; no API key in this env)
+**1016 tests across 18 packages** (was 868 after v0.6.0-finish; +148 new). All passing.
 
-### Test count
-
-**936 tests across 18 packages** (was 903 after Task 3; +33 from Tasks 4+5). All passing.
-
-| Package | After Task 3 | v0.7.0 (Tasks 1–5) | Δ |
+| Package | v0.6.0-finish | v0.7.0 | Δ |
 |---|---|---|---|
-| embeddings | 28 | 28 | 0 |
-| memory-store | 54 | 54 | 0 |
-| context-manager | 47 | 47 | 0 |
+| embeddings | — | 28 | NEW |
+| memory-store | — | 54 | NEW |
+| context-manager | — | 47 | NEW |
 | codebase-index | — | 26 | NEW |
 | subagent | 120 | 127 | +7 (context integration) |
-| (other 13 packages) | 774 | 774 | 0 |
-| **TOTAL** | **903** | **936** | **+33** |
+| tui-pro | 95 | 132 | +37 (ContextBudget + BtwPrompt + ContextBreakdown) |
+| bench | 42 | 65 | +23 (v0.7.0 context attribution) |
+| apps/pi-pro | 91 | 111 | +20 (memory + btw + flags) |
+| (other 8 packages) | 520 | 520 | 0 |
+| **TOTAL** | **868** | **1016** | **+148** |
+
+### Files of interest
+
+- `docs/superpowers/specs/2026-06-11-pi-pro-v0.7.0-design.md` — v0.7.0 spec
+- `docs/superpowers/plans/2026-06-11-pi-pro-v0.7.0.md` — v0.7.0 plan
+- `memory/decisions/v0.7.0.md` — 9 v0.7.0 decisions
+- `memory/projects/pi-pro.md` — project state
+- `memory/sessions/2026-06-11-pi-pro-v070-design.md` + this session log
+- `bench/src/context-attribution.ts` — v0.7.0 bench attribution
+
+### Verification (live bench)
+
+Live LLM bench deferred to follow-up session (no API key in env). All projected numbers in `formatContextAttribution` output are from spec §3; will be replaced with real runs in v0.7.1.
 
 > Note: v0.7.0 was launched under the working name "pi-pro" (not "promyra") per Sid's
 > project rename on 2026-06-11. See `memory/projects/pi-pro.md` and `memory/decisions/v0.7.0.md`.

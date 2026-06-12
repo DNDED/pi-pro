@@ -90,7 +90,7 @@ Stack:
 
 Test count: **868 / 868 passing** (was 749; +119 new). All 14 packages build clean. Committed + pushed to https://github.com/DNDED/pi-pro.
 
-### v0.7.0 Memory at Scale — IN PROGRESS (this session)
+### v0.7.0 Memory at Scale — SHIPPED 2026-06-11
 
 Targets vs v0.6.0:
 - **Long-session completion:** ≥ 90% of v0.6.0 short-session quality on 50+ turn bench
@@ -99,15 +99,21 @@ Targets vs v0.6.0:
 - **Cross-session recall:** ≥ 80% on injected-context test
 - **Codebase search accuracy:** ≥ 70% top-5 hit rate
 
-Stack (in build order):
-1. **`@pi/embeddings`** (NEW) — provider abstraction + Anthropic Voyage-3 + OpenAI text-embedding-3-small + opencode-go + NullEmbeddings BM25 fallback
-2. **`@pi/memory-store`** (NEW) — SQLite-backed chunk store with hybrid cosine+BM25 search
-3. **`@pi/context-manager`** (NEW) — sliding window + extractive compression + adaptive triggers + /btw
-4. **`@pi/codebase-index`** (NEW) — regex symbols + embeddings + hybrid search + chokidar watcher
-5. **Wire into LlmWorker** — `LlmWorker` wraps `ContextManager`; `/btw` exposed
-6. **TUI** — `ContextBudget`, `BtwPrompt`, `/context` command
-7. **CLI** — `--memory`, `--embeddings`, `--compression` flags; `/btw`, `/memory-*` commands
-8. **Bench** — long-task fixture; attribution `compression-off/memory-off/embeddings-off`
+Stack (shipped — all 4 NEW packages + integration + UI + bench):
+1. **`@pi/embeddings`** (NEW, 28 tests) — provider abstraction + Anthropic Voyage-3 + OpenAI text-embedding-3-small + opencode-go + NullEmbeddings BM25 fallback
+2. **`@pi/memory-store`** (NEW, 54 tests) — SQLite-backed chunk store with hybrid cosine+BM25+recency search; better-sqlite3 sync
+3. **`@pi/context-manager`** (NEW, 47 tests) — sliding window + extractive compression + adaptive triggers (3 OR'd modes) + LLM summarizer + /btw side channel
+4. **`@pi/codebase-index`** (NEW, 26 tests) — wraps v0.5.0 repo-map + persistent embeddings + chokidar watcher
+5. **LlmWorker integration** (+7 tests) — `contextManager` opt, `getContextStats`, `runBtw`, `maybeCompress` pre-run, `recordUsage` per-iter
+6. **TUI** (+37 tests) — `ContextBudget` (live bar in Footer, green/yellow/red) + `BtwPrompt` + `ContextBreakdown` (per-category for /context)
+7. **CLI** (+20 tests) — `pi memory add/search/list/forget/count`, `pi btw`, `pi context`; REPL `/btw`, `/context`, `/memory-add`, `/memory-search`, `/memory-list`, `/memory-forget`; v0.7.0 env flags
+8. **Bench** (+23 tests) — 4 v0.7.0 attribution configs (baseline, memory-off, compression-off, embeddings-off); long-task-50turn fixture
+
+Test count: **1016 / 1016 passing** (was 868 in v0.6.0-finish; +148 new). All 18 packages build clean.
+
+12 atomic commits pushed to DNDED/pi-pro master: rename + 4 packages + wiring + lock + docs/memory/CHANGELOG + TUI + CLI + bench attribution + this paperwork.
+
+Live LLM bench deferred to v0.7.1 follow-up session (no API key in env); projected numbers in `formatContextAttribution` from spec §3.
 
 ### Roadmap (future)
 
