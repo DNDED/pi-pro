@@ -10,7 +10,7 @@ let root: string;
 const testId = swarmId("swarm_wt_001");
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "promyra-swarm-worktree-"));
+  root = await mkdtemp(join(tmpdir(), "pi-pro-swarm-worktree-"));
   // Initialize a git repo
   execSync("git init -q -b main", { cwd: root });
   execSync("git config user.email t@local", { cwd: root });
@@ -33,7 +33,7 @@ describe("WorktreePool — create", () => {
     const p = pool();
     const ref = p.createSync("builder");
     expect(ref.role).toBe("builder");
-    expect(ref.path).toBe(join(root, ".promyra", "worktrees", "swarm_wt_001", "builder"));
+    expect(ref.path).toBe(join(root, ".pi-pro", "worktrees", "swarm_wt_001", "builder"));
     expect(ref.branch).toBe("swarm/swarm_wt_001/builder");
     expect(ref.swarmId).toBe(testId);
   });
@@ -50,7 +50,7 @@ describe("WorktreePool — create", () => {
   });
 
   it("fails if root is not a git repo", async () => {
-    const nonGit = await mkdtemp(join(tmpdir(), "promyra-non-git-"));
+    const nonGit = await mkdtemp(join(tmpdir(), "pi-pro-non-git-"));
     try {
       const p = new WorktreePool({ rootDir: nonGit, swarmId: testId });
       expect(() => p.createSync("builder")).toThrow(/git/i);
@@ -92,9 +92,9 @@ describe("WorktreePool — remove", () => {
     p.createSync("builder");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { existsSync } = require("node:fs");
-    expect(existsSync(join(root, ".promyra", "worktrees", "swarm_wt_001", "builder"))).toBe(true);
+    expect(existsSync(join(root, ".pi-pro", "worktrees", "swarm_wt_001", "builder"))).toBe(true);
     p.removeSync("builder");
-    expect(existsSync(join(root, ".promyra", "worktrees", "swarm_wt_001", "builder"))).toBe(false);
+    expect(existsSync(join(root, ".pi-pro", "worktrees", "swarm_wt_001", "builder"))).toBe(false);
   });
 
   it("remove on non-existent is a no-op", () => {

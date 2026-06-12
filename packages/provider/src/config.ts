@@ -24,8 +24,8 @@ const DEFAULT_MODELS: Record<ProviderName, string> = {
   "openrouter": "anthropic/claude-sonnet-4-6",
 };
 
-export const DEFAULT_CONFIG_PATH = join(homedir(), ".promyra", "promyra-config.json");
-export const DEFAULT_AUTH_PATH = join(homedir(), ".promyra", "promyra-auth.json");
+export const DEFAULT_CONFIG_PATH = join(homedir(), ".pi-pro", "pi-pro-config.json");
+export const DEFAULT_AUTH_PATH = join(homedir(), ".pi-pro", "pi-pro-auth.json");
 
 export function defaultModelFor(provider: ProviderName): string {
   return DEFAULT_MODELS[provider];
@@ -36,11 +36,11 @@ function resolveHome(): string {
 }
 
 function configPath(path?: string): string {
-  return path ?? join(resolveHome(), ".promyra", "promyra-config.json");
+  return path ?? join(resolveHome(), ".pi-pro", "pi-pro-config.json");
 }
 
 function authPath(path?: string): string {
-  return path ?? join(resolveHome(), ".promyra", "promyra-auth.json");
+  return path ?? join(resolveHome(), ".pi-pro", "pi-pro-auth.json");
 }
 
 function providerToEnvVar(provider: ProviderName): string {

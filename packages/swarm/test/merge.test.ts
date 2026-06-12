@@ -11,7 +11,7 @@ let root: string;
 const testId = swarmId("swarm_merge_001");
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "promyra-swarm-merge-"));
+  root = await mkdtemp(join(tmpdir(), "pi-pro-swarm-merge-"));
   execSync("git init -q -b main", { cwd: root });
   execSync("git config user.email t@local", { cwd: root });
   execSync("git config user.name t", { cwd: root });

@@ -10,7 +10,7 @@ let root: string;
 const testId = swarmId("swarm_orch_001");
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "promyra-swarm-orch-"));
+  root = await mkdtemp(join(tmpdir(), "pi-pro-swarm-orch-"));
   execSync("git init -q -b main", { cwd: root, shell: "/bin/sh" });
   execSync("git config user.email t@local", { cwd: root, shell: "/bin/sh" });
   execSync("git config user.name t", { cwd: root, shell: "/bin/sh" });
@@ -118,7 +118,7 @@ describe("Orchestrator — happy path", () => {
     });
     await orch.run();
 
-    const planFile = join(root, ".promyra", "swarm", "swarm_orch_001", "plan.md");
+    const planFile = join(root, ".pi-pro", "swarm", "swarm_orch_001", "plan.md");
     const exists = (await import("node:fs")).existsSync(planFile);
     expect(exists).toBe(true);
   });

@@ -26,7 +26,7 @@ export interface TuiTheme {
 }
 
 export const theme: TuiTheme = {
-  name: "promyra",
+  name: "pi-pro",
   background: "#0a0a0a",
   backgroundPanel: "#141414",
   backgroundElement: "#1e1e1e",

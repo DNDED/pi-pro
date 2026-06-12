@@ -8,10 +8,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const OPENCODE = "/home/trader/.npm-global/lib/node_modules/opencode-ai/node_modules/opencode-linux-x64/bin/opencode";
-const PROMYRA_ROOT = "/home/trader/Developer/promyra";
+const PROMYRA_ROOT = "/home/trader/Developer/pi-pro";
 const FIXTURES_DIR = join(PROMYRA_ROOT, "bench/fixtures");
 const API_KEY = "sk-lHIIYh7XEReGbuycI5Of1of1tQEeAX61s0y8WsnW27ui5aso3su5YtnYwhOU8qxH";
-const RESULTS_FILE = "/home/trader/Developer/promyra/docs/agent-comparison-v0.4-raw.json";
+const RESULTS_FILE = "/home/trader/Developer/pi-pro/docs/agent-comparison-v0.4-raw.json";
 
 const TASKS = [
   { id: "refactor-helper", fixture: "tiny-express", prompt: "Refactor: extract the duplicated 'parseUserInput' helper into src/utils/parse-input.ts. Make sure all existing tests still pass." },
@@ -64,7 +64,7 @@ async function runPromyra(task, mode, opencodeSkillsContent) {
   const { LlmBenchRunner } = await import(join(PROMYRA_ROOT, "bench/dist/src/llm-bench-runner.js"));
   const { OpenCodeGoProvider } = await import(join(PROMYRA_ROOT, "packages/provider/dist/opencode-go.js"));
 
-  const workspaceRoot = await mkdtemp(join(tmpdir(), "promyra-"));
+  const workspaceRoot = await mkdtemp(join(tmpdir(), "pi-pro-"));
   const provider = new OpenCodeGoProvider({ apiKey: API_KEY, model: "minimax-m3" });
 
   const opts = { workspaceRoot, model: "minimax-m3", bootstrapDeps: true };
@@ -176,7 +176,7 @@ function summarize(results, label) {
   log(`\n${"=".repeat(60)}`);
   log(`SUMMARY: ${label}`);
   log("=".repeat(60));
-  log("Task                  | promyra          | opencode        | Winner");
+  log("Task                  | pi-pro          | opencode        | Winner");
   log("----------------------|-----------------|-----------------|--------");
 
   let piPasses = 0, ocPasses = 0, piWins = 0, ocWins = 0;
@@ -193,16 +193,16 @@ function summarize(results, label) {
     piPasses += piPC; ocPasses += ocPC;
 
     let winner;
-    if (piPC > ocPC) { piWins++; winner = "promyra"; }
+    if (piPC > ocPC) { piWins++; winner = "pi-pro"; }
     else if (ocPC > piPC) { ocWins++; winner = "opencode"; }
-    else if (piMT < ocMT) { winner = "promyra (fast)"; }
+    else if (piMT < ocMT) { winner = "pi-pro (fast)"; }
     else { winner = "opencode (fast)"; }
 
     log(`${r.task.padEnd(22)}| ${piPC}/3 (${(piMT/1000).toFixed(1)}s) | ${ocPC}/3 (${(ocMT/1000).toFixed(1)}s) | ${winner}`);
   }
 
-  log(`\nTotal: promyra ${piPasses}/${results.length*3} | opencode ${ocPasses}/${results.length*3}`);
-  log(`Task wins: promyra ${piWins}, opencode ${ocWins}`);
+  log(`\nTotal: pi-pro ${piPasses}/${results.length*3} | opencode ${ocPasses}/${results.length*3}`);
+  log(`Task wins: pi-pro ${piWins}, opencode ${ocWins}`);
   return { piPasses, ocPasses, total: results.length * 3, piWins, ocWins };
 }
 
@@ -239,8 +239,8 @@ async function main() {
   log(`\n${"=".repeat(60)}`);
   log("FINAL");
   log("=".repeat(60));
-  log(`Sandbox: promyra ${sandboxSummary.piPasses}/${sandboxSummary.total} | opencode ${sandboxSummary.ocPasses}/${sandboxSummary.total}`);
-  log(`Parity:  promyra ${paritySummary.piPasses}/${paritySummary.total} | opencode ${paritySummary.ocPasses}/${paritySummary.total}`);
+  log(`Sandbox: pi-pro ${sandboxSummary.piPasses}/${sandboxSummary.total} | opencode ${sandboxSummary.ocPasses}/${sandboxSummary.total}`);
+  log(`Parity:  pi-pro ${paritySummary.piPasses}/${paritySummary.total} | opencode ${paritySummary.ocPasses}/${paritySummary.total}`);
   log(`Wins - Sandbox: pi ${sandboxSummary.piWins} oc ${sandboxSummary.ocWins}`);
   log(`Wins - Parity:  pi ${paritySummary.piWins} oc ${paritySummary.ocWins}`);
 

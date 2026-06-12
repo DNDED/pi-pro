@@ -83,7 +83,7 @@ export function Footer({
         ) : null}
         {tab ? <Text color={theme.textMuted}>{tab}  </Text> : null}
         <Text color={theme.textMuted}>
-          <Text color={theme.success}>•</Text> <Text bold>promyra</Text> v{version}
+          <Text color={theme.success}>•</Text> <Text bold>pi-pro</Text> v{version}
         </Text>
       </Box>
     </Box>

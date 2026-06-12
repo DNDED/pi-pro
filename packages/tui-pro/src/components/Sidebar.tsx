@@ -47,7 +47,7 @@ export function Sidebar({
       </Box>
       <Box flexDirection="column" marginTop={1}>
         <Text color={theme.textMuted}>
-          <Text color={theme.success}>•</Text> <Text color={theme.text} bold>promyra</Text> v{version}
+          <Text color={theme.success}>•</Text> <Text color={theme.text} bold>pi-pro</Text> v{version}
         </Text>
       </Box>
     </Box>

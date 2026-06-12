@@ -6,7 +6,7 @@ import { getRepoMap } from "../src/repo-map.js";
 
 let dir: string;
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "promyra-repomap-"));
+  dir = await mkdtemp(join(tmpdir(), "pi-pro-repomap-"));
 });
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });

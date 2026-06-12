@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Message, StreamChunk, Tool, CallOpts, Provider, ContentBlock, Usage, CacheHints, isTokenChunk, isToolCallChunk, isDoneChunk } from "../src/types.js";
 
-describe("@promyra/provider types", () => {
+describe("@pi/provider types", () => {
   it("Message can be a plain string content", () => {
     const m: Message = { role: "user", content: "hello" };
     expect(m.role).toBe("user");

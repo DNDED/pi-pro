@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { StateMachine, canTransition, nextStates, TRANSITIONS } from "../src/state-machine.js";
 import { Plan, TaskRunner } from "../src/index.js";
-import { CheckpointStore } from "@promyra/checkpoint";
-import { SessionMemory } from "@promyra/memory";
+import { CheckpointStore } from "@pi/checkpoint";
+import { SessionMemory } from "@pi/memory";
 import { SessionLog } from "../src/session-log.js";
 import { WorktreeStore } from "../src/worktree-store.js";
 import { execSync } from "node:child_process";
 
-describe("@promyra/tasks state machine", () => {
+describe("@pi/tasks state machine", () => {
   it("starts at intake", () => {
     const sm = new StateMachine();
     expect(sm.state()).toBe("intake");

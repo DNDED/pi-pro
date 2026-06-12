@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { LlmWorker } from "../src/llm-worker.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 import { StepContext } from "../src/types.js";
-import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@promyra/tools";
-import { Optimizer } from "@promyra/optimizer";
-import { ToolResultCache } from "@promyra/cache";
+import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@pi/tools";
+import { Optimizer } from "@pi/optimizer";
+import { ToolResultCache } from "@pi/cache";
 
 class FakeProvider implements Provider {
   name = "fake";
@@ -75,7 +75,7 @@ describe("v0.5.0 LlmWorker — optimizer integration", () => {
     expect(opts.cacheHints).toBeDefined();
     expect(opts.cacheHints?.cacheSystem).toBe(true);
     expect(opts.cacheHints?.cacheTools).toBe(true);
-    expect(opts.cacheHints?.cacheKey).toContain("promyra-build-tsk_v050");
+    expect(opts.cacheHints?.cacheKey).toContain("pi-pro-build-tsk_v050");
   });
 
   it("accumulates cost in dollars across LLM calls", async () => {

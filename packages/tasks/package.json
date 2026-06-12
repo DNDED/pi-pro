@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/tasks",
+  "name": "@pi/tasks",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,8 +17,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@promyra/checkpoint": "workspace:*",
-    "@promyra/memory": "workspace:*",
+    "@pi/checkpoint": "workspace:*",
+    "@pi/memory": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

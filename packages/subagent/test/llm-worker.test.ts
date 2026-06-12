@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { LlmWorker } from "../src/llm-worker.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 import { StepContext } from "../src/types.js";
-import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@promyra/tools";
+import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@pi/tools";
 
 class FakeProvider implements Provider {
   name = "fake";

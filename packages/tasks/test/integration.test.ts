@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { CheckpointStore } from "@promyra/checkpoint";
-import { SessionMemory } from "@promyra/memory";
+import { CheckpointStore } from "@pi/checkpoint";
+import { SessionMemory } from "@pi/memory";
 import { SessionLog } from "../src/session-log.js";
 import { WorktreeStore } from "../src/worktree-store.js";
 import { TaskRunner, Plan } from "../src/index.js";
@@ -30,7 +30,7 @@ function makeDeps() {
   return { checkpoint, memory, log, worktree };
 }
 
-describe("@promyra/tasks — end-to-end TaskRunner integration", () => {
+describe("@pi/tasks — end-to-end TaskRunner integration", () => {
   it("runs a full task intake → plan → branch → execute → verify → summarize → done", async () => {
     const deps = makeDeps();
     const taskId = deps.checkpoint.newTaskId();
@@ -51,7 +51,7 @@ describe("@promyra/tasks — end-to-end TaskRunner integration", () => {
 
     const wt = await runner.branch();
     expect(runner.state()).toBe("execute");
-    expect(wt.branch).toMatch(/^promyra\/[a-f0-9]{10}$/);
+    expect(wt.branch).toMatch(/^pi-pro\/[a-f0-9]{10}$/);
     expect(existsSync(wt.path)).toBe(true);
 
     await runner.markStepDone("s1");
@@ -116,13 +116,13 @@ describe("@promyra/tasks — end-to-end TaskRunner integration", () => {
   it("accepts a valid taskId and creates a real worktree on a real branch", () => {
     const wt = new WorktreeStore(dir);
     const info = wt.create("tsk_abcdef12");
-    expect(info.branch).toBe("promyra/abcdef12");
-    expect(info.path).toBe(join(dir, ".promyra/worktrees/tsk_abcdef12"));
+    expect(info.branch).toBe("pi-pro/abcdef12");
+    expect(info.path).toBe(join(dir, ".pi-pro/worktrees/tsk_abcdef12"));
     expect(existsSync(info.path)).toBe(true);
     const inRepo = execSync("git rev-parse --is-inside-work-tree", { cwd: info.path, encoding: "utf8" }).trim();
     expect(inRepo).toBe("true");
     const branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: info.path, encoding: "utf8" }).trim();
-    expect(branch).toBe("promyra/abcdef12");
+    expect(branch).toBe("pi-pro/abcdef12");
   });
 
   it("resumes a task from the latest checkpoint and continues correctly", async () => {
@@ -181,7 +181,7 @@ describe("@promyra/tasks — end-to-end TaskRunner integration", () => {
 
     await deps.checkpoint.clearTask(taskId);
     expect((await deps.checkpoint.listForTask(taskId)).length).toBe(0);
-    expect(existsSync(join(dir, ".promyra/checkpoints", taskId))).toBe(false);
+    expect(existsSync(join(dir, ".pi-pro/checkpoints", taskId))).toBe(false);
 
     deps.worktree.remove(taskId);
     expect(existsSync(wt.path)).toBe(false);
@@ -199,7 +199,7 @@ describe("@promyra/tasks — end-to-end TaskRunner integration", () => {
     await runner.verifyPassed();
     await runner.summarize("log probe done");
 
-    const logPath = join(dir, ".promyra/sessions", `${taskId}.jsonl`);
+    const logPath = join(dir, ".pi-pro/sessions", `${taskId}.jsonl`);
     const s = await stat(logPath);
     expect(s.isFile()).toBe(true);
     expect(s.size).toBeGreaterThan(0);

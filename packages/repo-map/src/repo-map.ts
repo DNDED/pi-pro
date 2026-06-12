@@ -31,7 +31,7 @@ const DEFAULT_EXCLUDE: string[] = [
   ".venv",
   "venv",
   ".cache",
-  ".promyra",
+  ".pi-pro",
   "target",
 ];
 

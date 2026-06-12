@@ -28,7 +28,7 @@ import {
   tint,
 } from "../src/index.js";
 
-describe("@promyra/tui-pro theme", () => {
+describe("@pi/tui-pro theme", () => {
   it("has opencode pure black background", () => {
     expect(theme.background).toBe("#0a0a0a");
   });
@@ -80,7 +80,7 @@ describe("@promyra/tui-pro theme", () => {
   });
 });
 
-describe("@promyra/tui-pro helpers", () => {
+describe("@pi/tui-pro helpers", () => {
   it("hexToRgb parses hex", () => {
     expect(hexToRgb("#fab283")).toEqual({ r: 0xfa, g: 0xb2, b: 0x83 });
     expect(hexToRgb("invalid")).toBeNull();
@@ -108,7 +108,7 @@ describe("@promyra/tui-pro helpers", () => {
   });
 });
 
-describe("@promyra/tui-pro event classification", () => {
+describe("@pi/tui-pro event classification", () => {
   it("classifies tools", () => {
     expect(classifyTool("read")).toBe("read");
     expect(classifyTool("write")).toBe("write");
@@ -131,7 +131,7 @@ describe("@promyra/tui-pro event classification", () => {
   });
 });
 
-describe("@promyra/tui-pro diff", () => {
+describe("@pi/tui-pro diff", () => {
   it("renders unchanged lines as context", () => {
     const lines = renderDiff("a\nb\nc", "a\nb\nc");
     expect(lines.every((l) => l.kind === "context")).toBe(true);
@@ -148,7 +148,7 @@ describe("@promyra/tui-pro diff", () => {
   });
 });
 
-describe("@promyra/tui-pro BlockLogo", () => {
+describe("@pi/tui-pro BlockLogo", () => {
   it("renders block-letter PROMYRA", () => {
     const { lastFrame } = render(<BlockLogo />);
     const out = lastFrame();
@@ -166,7 +166,7 @@ describe("@promyra/tui-pro BlockLogo", () => {
   });
 });
 
-describe("@promyra/tui-pro HeaderRow", () => {
+describe("@pi/tui-pro HeaderRow", () => {
   it("shows title in accent", () => {
     const { lastFrame } = render(<HeaderRow title="Fix auth bug" />);
     expect(lastFrame()).toContain("Fix auth bug");
@@ -196,7 +196,7 @@ describe("@promyra/tui-pro HeaderRow", () => {
   });
 });
 
-describe("@promyra/tui-pro UserMessage", () => {
+describe("@pi/tui-pro UserMessage", () => {
   it("renders title in accent color", () => {
     const { lastFrame } = render(
       <UserMessage text="# Fix the auth bug" agent="build" />
@@ -226,7 +226,7 @@ describe("@promyra/tui-pro UserMessage", () => {
   });
 });
 
-describe("@promyra/tui-pro AssistantMessage", () => {
+describe("@pi/tui-pro AssistantMessage", () => {
   it("renders plain text", () => {
     const { lastFrame } = render(
       <AssistantMessage parts={[{ kind: "text", text: "I'll fix that." }]} />
@@ -279,7 +279,7 @@ describe("@promyra/tui-pro AssistantMessage", () => {
   });
 });
 
-describe("@promyra/tui-pro ToolContent", () => {
+describe("@pi/tui-pro ToolContent", () => {
   it("renders read tool with file content", () => {
     const { lastFrame } = render(
       <ToolContent
@@ -361,7 +361,7 @@ describe("@promyra/tui-pro ToolContent", () => {
   });
 });
 
-describe("@promyra/tui-pro ErrorMessage", () => {
+describe("@pi/tui-pro ErrorMessage", () => {
   it("renders with X icon and red text", () => {
     const { lastFrame } = render(<ErrorMessage text="test failed" />);
     const out = lastFrame();
@@ -370,12 +370,12 @@ describe("@promyra/tui-pro ErrorMessage", () => {
   });
 });
 
-describe("@promyra/tui-pro Footer", () => {
+describe("@pi/tui-pro Footer", () => {
   it("shows workdir and version", () => {
     const { lastFrame } = render(<Footer workdir="/tmp" version="0.8.0" />);
     const out = lastFrame();
     expect(out).toContain("/tmp");
-    expect(out).toContain("promyra");
+    expect(out).toContain("pi-pro");
     expect(out).toContain("0.8.0");
   });
 
@@ -408,7 +408,7 @@ describe("@promyra/tui-pro Footer", () => {
   });
 });
 
-describe("@promyra/tui-pro Sidebar", () => {
+describe("@pi/tui-pro Sidebar", () => {
   it("shows title and workdir", () => {
     const { lastFrame } = render(
       <Sidebar title="My session" workdir="/tmp" />
@@ -434,7 +434,7 @@ describe("@promyra/tui-pro Sidebar", () => {
   });
 });
 
-describe("@promyra/tui-pro SubagentFooter", () => {
+describe("@pi/tui-pro SubagentFooter", () => {
   it("shows label and index", () => {
     const { lastFrame } = render(
       <SubagentFooter label="Search" index={2} total={5} />
@@ -469,7 +469,7 @@ describe("@promyra/tui-pro SubagentFooter", () => {
   });
 });
 
-describe("@promyra/tui-pro PermissionPrompt", () => {
+describe("@pi/tui-pro PermissionPrompt", () => {
   it("renders permission header", () => {
     const { lastFrame } = render(
       <PermissionPrompt
@@ -496,7 +496,7 @@ describe("@promyra/tui-pro PermissionPrompt", () => {
   });
 });
 
-describe("@promyra/tui-pro HomeScreen", () => {
+describe("@pi/tui-pro HomeScreen", () => {
   it("renders logo and prompt", () => {
     const { lastFrame } = render(
       <HomeScreen
@@ -520,7 +520,7 @@ describe("@promyra/tui-pro HomeScreen", () => {
   });
 });
 
-describe("@promyra/tui-pro SessionScreen", () => {
+describe("@pi/tui-pro SessionScreen", () => {
   it("renders empty state", () => {
     const { lastFrame } = render(
       <SessionScreen
@@ -617,7 +617,7 @@ describe("@promyra/tui-pro SessionScreen", () => {
   });
 });
 
-describe("@promyra/tui-pro App", () => {
+describe("@pi/tui-pro App", () => {
   it("renders home screen when no initial task", () => {
     const { lastFrame } = render(<App />);
     expect(lastFrame()).toContain("▀");

@@ -73,7 +73,7 @@ describe("ToolResultCache — mtime invalidation on real files", () => {
   let dir: string;
   let cache: ToolResultCache;
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "promyra-cache-"));
+    dir = await mkdtemp(join(tmpdir(), "pi-pro-cache-"));
     cache = new ToolResultCache();
   });
   afterEach(async () => {

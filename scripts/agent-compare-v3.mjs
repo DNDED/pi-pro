@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const OPENCODE = "/home/trader/.npm-global/lib/node_modules/opencode-ai/node_modules/opencode-linux-x64/bin/opencode";
-const PROMYRA = "/home/trader/Developer/promyra";
+const PROMYRA = "/home/trader/Developer/pi-pro";
 const FIXTURES = join(PROMYRA, "bench/fixtures");
 const KEY = "sk-lHIIYh7XEReGbuycI5Of1of1tQEeAX61s0y8WsnW27ui5aso3su5YtnYwhOU8qxH";
 const LOG = join(PROMYRA, "docs/comparison-v3.jsonl");

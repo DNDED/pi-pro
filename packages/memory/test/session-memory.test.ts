@@ -16,7 +16,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("@promyra/memory", () => {
+describe("@pi/memory", () => {
   it("returns empty string when no memory file exists", async () => {
     expect(await mem.read()).toBe("");
   });

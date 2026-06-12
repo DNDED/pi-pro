@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { render } from "ink-testing-library";
 import { SwarmPanel, formatSwarmStateLine, colorForRole, colorForStatus, colorForBudget } from "../src/components/SwarmPanel.js";
-import type { SwarmState, SwarmRole, SwarmPauseReason, TestResult } from "@promyra/swarm";
+import type { SwarmState, SwarmRole, SwarmPauseReason, TestResult } from "@pi/swarm";
 
 function mkState(over: Partial<SwarmState> = {}): SwarmState {
   return {

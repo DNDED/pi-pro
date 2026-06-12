@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/tui-pro",
+  "name": "@pi/tui-pro",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,9 +18,9 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@promyra/provider": "workspace:*",
-    "@promyra/swarm": "workspace:*",
-    "@promyra/tools": "workspace:*",
+    "@pi/provider": "workspace:*",
+    "@pi/swarm": "workspace:*",
+    "@pi/tools": "workspace:*",
     "ink": "^5.0.1",
     "ink-spinner": "^5.0.0",
     "ink-testing-library": "^4.0.0",

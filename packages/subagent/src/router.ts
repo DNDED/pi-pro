@@ -4,10 +4,10 @@ import { promptFor, StubWorker } from "./worker.js";
 import { LlmWorker, ToolInstance } from "./llm-worker.js";
 import {
   createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool,
-} from "@promyra/tools";
-import type { Provider } from "@promyra/provider";
-import { Optimizer, type OptimizerFlags } from "@promyra/optimizer";
-import { ToolResultCache } from "@promyra/cache";
+} from "@pi/tools";
+import type { Provider } from "@pi/provider";
+import { Optimizer, type OptimizerFlags } from "@pi/optimizer";
+import { ToolResultCache } from "@pi/cache";
 
 const RETRY_LIMIT = 2;
 

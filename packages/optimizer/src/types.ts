@@ -2,7 +2,7 @@
  * v0.5.0 optimizer types.
  */
 
-import type { Message, Tool, CallOpts, CacheHints } from "@promyra/provider";
+import type { Message, Tool, CallOpts, CacheHints } from "@pi/provider";
 
 /**
  * Input to the optimizer. Captures everything the optimizer needs to

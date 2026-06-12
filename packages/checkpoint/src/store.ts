@@ -4,8 +4,8 @@ import { join, dirname } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { Checkpoint, CheckpointSchema } from "./types.js";
 
-const SESSIONS_DIR = ".promyra/sessions";
-const CHECKPOINTS_DIR = ".promyra/checkpoints";
+const SESSIONS_DIR = ".pi-pro/sessions";
+const CHECKPOINTS_DIR = ".pi-pro/checkpoints";
 
 export class CheckpointStore {
   constructor(private readonly rootDir: string = process.cwd()) {}

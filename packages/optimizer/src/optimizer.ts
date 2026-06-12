@@ -3,7 +3,7 @@
  *
  * Wraps an LLM call with:
  *   1. Static block assembly (system + repo-map + tools).
- *   2. Cache breakpoint application (via @promyra/cache).
+ *   2. Cache breakpoint application (via @pi/cache).
  *   3. Cascade model map (per-tool cheap vs main).
  *   4. Cost estimation.
  *
@@ -11,13 +11,13 @@
  * fall back to a raw LLM call.
  */
 
-import type { Message, Tool, CacheHints } from "@promyra/provider";
+import type { Message, Tool, CacheHints } from "@pi/provider";
 import {
   applyAnthropicBreakpoints,
   applyOpenAIPrefixOrder,
   passthrough,
   PromptCache,
-} from "@promyra/cache";
+} from "@pi/cache";
 import type { TurnContext, OptimizedTurn, OptimizerFlags } from "./types.js";
 import { resolveCascade, type ToolCall, groupForParallel } from "./cascade.js";
 import { estimateCost, resolveCascadeModel } from "./pricing.js";

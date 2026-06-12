@@ -201,9 +201,9 @@ export interface OrchestratorOpts {
   budgetUsd?: number;
   /** Max retries per subagent. Default 2 for builder, 1 for test-runner, 0 for others. */
   maxRetries?: number;
-  /** Worktree base directory. Default .promyra/worktrees. */
+  /** Worktree base directory. Default .pi-pro/worktrees. */
   worktreeBase?: string;
-  /** Scratchpad base directory. Default .promyra/swarm. */
+  /** Scratchpad base directory. Default .pi-pro/swarm. */
   scratchpadBase?: string;
   /** When true, do not actually dispatch LLM calls; print plan + roster and exit. */
   dryRun?: boolean;

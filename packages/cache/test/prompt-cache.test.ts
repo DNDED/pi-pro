@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { PromptCache, applyAnthropicBreakpoints, applyOpenAIPrefixOrder, passthrough } from "../src/prompt-cache.js";
-import type { Message, Tool } from "@promyra/provider";
+import type { Message, Tool } from "@pi/provider";
 
 describe("PromptCache — applyAnthropicBreakpoints", () => {
   it("returns messages unchanged when no breakpoints", () => {

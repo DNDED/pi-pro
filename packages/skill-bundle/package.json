@@ -1,7 +1,7 @@
 {
-  "name": "@promyra/skill-bundle",
+  "name": "@pi/skill-bundle",
   "version": "0.4.0",
-  "description": "Curated skills for promyra",
+  "description": "Curated skills for pi-pro",
   "type": "module",
   "main": "./dist/loader.js",
   "types": "./dist/loader.d.ts",

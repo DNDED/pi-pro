@@ -16,7 +16,7 @@
  *   support explicit cache hints.
  */
 
-import type { Message, Tool } from "@promyra/provider";
+import type { Message, Tool } from "@pi/provider";
 import type { CacheBreakpoint, CacheStats, ToolWithBreakpoint } from "./types.js";
 
 function stableStringify(v: unknown): string {

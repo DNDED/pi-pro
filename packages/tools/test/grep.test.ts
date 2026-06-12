@@ -7,14 +7,14 @@ import { createGrepTool } from "../src/grep.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "promyra-grep-"));
+  workdir = await mkdtemp(join(tmpdir(), "pi-pro-grep-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@promyra/tools/grep", () => {
+describe("@pi/tools/grep", () => {
   it("finds a line matching the regex", async () => {
     await writeFile(join(workdir, "a.txt"), "alpha\nbeta\ngamma\n", "utf8");
     const grep = createGrepTool({ cwd: workdir });
@@ -73,7 +73,7 @@ describe("@promyra/tools/grep", () => {
     expect(result.matches.map(m => m.path)).toEqual(["shallow.txt"]);
   });
 
-  it("skips ignored directories (node_modules, .git, dist, .promyra)", async () => {
+  it("skips ignored directories (node_modules, .git, dist, .pi-pro)", async () => {
     await writeFile(join(workdir, "keep.txt"), "target\n", "utf8");
     await mkdir(join(workdir, "node_modules"), { recursive: true });
     await writeFile(join(workdir, "node_modules", "leak.txt"), "target\n", "utf8");

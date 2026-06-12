@@ -7,14 +7,14 @@ import { createWriteTool } from "../src/write.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "promyra-write-"));
+  workdir = await mkdtemp(join(tmpdir(), "pi-pro-write-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@promyra/tools/write", () => {
+describe("@pi/tools/write", () => {
   it("creates a new file with the given content", async () => {
     const p = join(workdir, "out.txt");
     const write = createWriteTool();

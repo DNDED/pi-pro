@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/optimizer",
+  "name": "@pi/optimizer",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,8 +17,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@promyra/cache": "workspace:*",
-    "@promyra/provider": "workspace:*"
+    "@pi/cache": "workspace:*",
+    "@pi/provider": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

@@ -7,7 +7,7 @@
  * - `ToolCacheKey`: stable hash key for tool result memoization.
  */
 
-import type { Message, Tool, CallOpts } from "@promyra/provider";
+import type { Message, Tool, CallOpts } from "@pi/provider";
 
 export interface CacheBreakpoint {
   /** The kind of section this breakpoint ends. */

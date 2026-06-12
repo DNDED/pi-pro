@@ -1,4 +1,4 @@
-import { Provider } from "@promyra/provider";
+import { Provider } from "@pi/provider";
 import { StepContext, SubagentResult, Tool } from "./types.js";
 import { LlmWorker, ToolInstance } from "./llm-worker.js";
 

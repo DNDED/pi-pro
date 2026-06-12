@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LlmWorker, ToolInstance } from "../src/llm-worker.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 
 class TestProvider implements Provider {
   name = "test";

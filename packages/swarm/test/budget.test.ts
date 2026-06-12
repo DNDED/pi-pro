@@ -12,7 +12,7 @@ let budget: BudgetTracker;
 const testId = swarmId("swarm_budget_001");
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "promyra-swarm-budget-"));
+  root = await mkdtemp(join(tmpdir(), "pi-pro-swarm-budget-"));
   pad = new Scratchpad({ baseDir: root, swarmId: testId });
   budget = new BudgetTracker({ pad, limitUsd: 2.0 });
   await budget.load();

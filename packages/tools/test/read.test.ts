@@ -7,7 +7,7 @@ import { createReadTool } from "../src/read.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "promyra-read-"));
+  workdir = await mkdtemp(join(tmpdir(), "pi-pro-read-"));
 });
 
 afterEach(async () => {
@@ -16,7 +16,7 @@ afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@promyra/tools/read", () => {
+describe("@pi/tools/read", () => {
   it("returns the file contents as a string", async () => {
     const p = join(workdir, "hello.txt");
     await writeFile(p, "hello world", "utf8");

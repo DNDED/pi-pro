@@ -34,7 +34,7 @@ class AlwaysFailingWorker implements Worker {
   }
 }
 
-describe("@promyra/subagent", () => {
+describe("@pi/subagent", () => {
   it("build role allows bash/write/edit and disallows webfetch", () => {
     expect(isAllowed("build", "bash")).toBe(true);
     expect(isAllowed("build", "write")).toBe(true);

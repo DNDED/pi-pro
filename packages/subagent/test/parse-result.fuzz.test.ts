@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LlmWorker } from "../src/llm-worker.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 
 class FuzzProvider implements Provider {
   name = "fuzz";

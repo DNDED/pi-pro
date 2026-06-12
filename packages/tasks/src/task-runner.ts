@@ -1,5 +1,5 @@
-import { CheckpointStore } from "@promyra/checkpoint";
-import { SessionMemory } from "@promyra/memory";
+import { CheckpointStore } from "@pi/checkpoint";
+import { SessionMemory } from "@pi/memory";
 import { StateMachine, canTransition } from "./state-machine.js";
 import { SessionLog } from "./session-log.js";
 import { WorktreeStore } from "./worktree-store.js";

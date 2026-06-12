@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const tmpHome = join(tmpdir(), `promyra-config-test-${Date.now()}`);
-const realConfigPath = join(homedir(), ".pi", "agent", "promyra-config.json");
-const realAuthPath = join(homedir(), ".pi", "agent", "promyra-auth.json");
+const tmpHome = join(tmpdir(), `pi-pro-config-test-${Date.now()}`);
+const realConfigPath = join(homedir(), ".pi", "agent", "pi-pro-config.json");
+const realAuthPath = join(homedir(), ".pi", "agent", "pi-pro-auth.json");
 
 beforeEach(async () => {
   await mkdir(join(tmpHome, ".pi", "agent"), { recursive: true });
@@ -26,7 +26,7 @@ async function backupAndClearReal() {
   return { cfg: null as string | null, auth: null as string | null };
 }
 
-describe("@promyra/provider config", () => {
+describe("@pi/provider config", () => {
   it("loadConfig returns defaults when no file exists", async () => {
     const { loadConfig } = (globalThis as unknown as { __cfg: { loadConfig: () => Promise<unknown> } }).__cfg as any;
     const cfg = await loadConfig();
@@ -90,13 +90,13 @@ describe("@promyra/provider config", () => {
     expect(got).toBe("sk-custom");
   });
 
-  it("default configs at ~/.promyra/ and ~/.pi/ are independent", async () => {
+  it("default configs at ~/.pi-pro/ and ~/.pi/ are independent", async () => {
     const { loadConfig, saveConfig } = (globalThis as unknown as { __cfg: { loadConfig: (p?: string) => Promise<{ provider: string; model: string }>; saveConfig: (c: unknown, p?: string) => Promise<void> } }).__cfg as any;
-    const promyraPath = join(tmpHome, ".promyra", "promyra-config.json");
+    const piProPath = join(tmpHome, ".pi-pro", "pi-pro-config.json");
     const piPath = join(tmpHome, ".pi", "pi-config.json");
-    await saveConfig({ provider: "opencode-go", model: "minimax-m3" }, promyraPath);
+    await saveConfig({ provider: "opencode-go", model: "minimax-m3" }, piProPath);
     await saveConfig({ provider: "anthropic", model: "claude-opus-4-1" }, piPath);
-    const a = await loadConfig(promyraPath);
+    const a = await loadConfig(piProPath);
     const b = await loadConfig(piPath);
     expect(a.model).toBe("minimax-m3");
     expect(b.model).toBe("claude-opus-4-1");

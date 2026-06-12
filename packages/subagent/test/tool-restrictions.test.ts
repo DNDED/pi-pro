@@ -15,7 +15,7 @@ const EXPECTED = {
   "security-auditor": { bash: false, read: true,  write: false, edit: false, grep: true,  glob: true,  webfetch: false },
 };
 
-describe("@promyra/subagent tool-restrictions", () => {
+describe("@pi/subagent tool-restrictions", () => {
   describe("full role x tool matrix", () => {
     for (const role of ROLES) {
       const roleMap = (EXPECTED as Record<string, Record<string, boolean>>)[role];

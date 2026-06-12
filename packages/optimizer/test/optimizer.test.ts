@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Optimizer } from "../src/optimizer.js";
 import type { TurnContext } from "../src/types.js";
-import type { Message, Tool } from "@promyra/provider";
+import type { Message, Tool } from "@pi/provider";
 
 const basicTools: Tool[] = [
   { name: "read", description: "r", input_schema: { type: "object" } },

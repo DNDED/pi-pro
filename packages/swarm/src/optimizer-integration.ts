@@ -1,14 +1,14 @@
 /**
  * v0.6.0 OptimizerIntegration.
  *
- * Wraps v0.5.0's cascade router (`@promyra/optimizer`) with swarm-specific
+ * Wraps v0.5.0's cascade router (`@pi/optimizer`) with swarm-specific
  * role → model mapping. Per the v0.6.0 design, builder uses the main
  * model (Sonnet-class), and all other subagents use the cheap model
  * (Haiku-class). The per-tool cascade map (v0.5.0) is still applied
  * inside each subagent.
  */
 
-import { resolveCascadeModel, type CascadeDecision } from "@promyra/optimizer";
+import { resolveCascadeModel, type CascadeDecision } from "@pi/optimizer";
 import type { SwarmRole } from "./types.js";
 
 /**

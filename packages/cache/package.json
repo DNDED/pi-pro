@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/cache",
+  "name": "@pi/cache",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,7 +17,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@promyra/provider": "workspace:*"
+    "@pi/provider": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

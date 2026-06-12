@@ -7,14 +7,14 @@ import { createGlobTool } from "../src/glob.js";
 let workdir: string;
 
 beforeEach(async () => {
-  workdir = await mkdtemp(join(tmpdir(), "promyra-glob-"));
+  workdir = await mkdtemp(join(tmpdir(), "pi-pro-glob-"));
 });
 
 afterEach(async () => {
   await rm(workdir, { recursive: true, force: true });
 });
 
-describe("@promyra/tools/glob", () => {
+describe("@pi/tools/glob", () => {
   it("returns files matching *.ts", async () => {
     await writeFile(join(workdir, "a.ts"), "", "utf8");
     await writeFile(join(workdir, "b.ts"), "", "utf8");
@@ -88,7 +88,7 @@ describe("@promyra/tools/glob", () => {
     expect(result.files).toEqual([]);
   });
 
-  it("ignores node_modules, .git, dist, and .promyra directories", async () => {
+  it("ignores node_modules, .git, dist, and .pi-pro directories", async () => {
     await writeFile(join(workdir, "keep.ts"), "", "utf8");
     await mkdir(join(workdir, "node_modules"), { recursive: true });
     await writeFile(join(workdir, "node_modules", "leak.ts"), "", "utf8");
@@ -96,8 +96,8 @@ describe("@promyra/tools/glob", () => {
     await writeFile(join(workdir, ".git", "leak.ts"), "", "utf8");
     await mkdir(join(workdir, "dist"), { recursive: true });
     await writeFile(join(workdir, "dist", "leak.ts"), "", "utf8");
-    await mkdir(join(workdir, ".promyra"), { recursive: true });
-    await writeFile(join(workdir, ".promyra", "leak.ts"), "", "utf8");
+    await mkdir(join(workdir, ".pi-pro"), { recursive: true });
+    await writeFile(join(workdir, ".pi-pro", "leak.ts"), "", "utf8");
     const glob = createGlobTool({ cwd: workdir });
     const result = await glob.execute({ pattern: "*.ts" });
     expect(result.files).toEqual(["keep.ts"]);

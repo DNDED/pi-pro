@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/swarm",
+  "name": "@pi/swarm",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,12 +17,12 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@promyra/cache": "workspace:*",
-    "@promyra/optimizer": "workspace:*",
-    "@promyra/provider": "workspace:*",
-    "@promyra/subagent": "workspace:*",
-    "@promyra/tasks": "workspace:*",
-    "@promyra/tools": "workspace:*"
+    "@pi/cache": "workspace:*",
+    "@pi/optimizer": "workspace:*",
+    "@pi/provider": "workspace:*",
+    "@pi/subagent": "workspace:*",
+    "@pi/tasks": "workspace:*",
+    "@pi/tools": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

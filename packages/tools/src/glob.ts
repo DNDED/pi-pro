@@ -19,7 +19,7 @@ export interface GlobTool {
   execute(input: { pattern: string; path?: string }): Promise<{ files: string[] }>;
 }
 
-const IGNORE_DIRS = new Set(["node_modules", "dist", ".git", ".promyra"]);
+const IGNORE_DIRS = new Set(["node_modules", "dist", ".git", ".pi-pro"]);
 
 function toPosix(p: string): string {
   return p.split(sep).join(posix.sep);

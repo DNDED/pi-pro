@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { SessionEvent, SessionEventSchema } from "./types.js";
 
-const SESSIONS_DIR = ".promyra/sessions";
+const SESSIONS_DIR = ".pi-pro/sessions";
 
 export class SessionLog {
   constructor(private readonly rootDir: string = process.cwd()) {}

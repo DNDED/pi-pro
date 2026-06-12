@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const BASE = ".promyra/worktrees";
+const BASE = ".pi-pro/worktrees";
 
 export interface WorktreeInfo {
   taskId: string;
@@ -20,7 +20,7 @@ export class WorktreeStore {
   }
 
   private branchName(taskId: string): string {
-    return `promyra/${taskId.replace(/^tsk_/, "")}`;
+    return `pi-pro/${taskId.replace(/^tsk_/, "")}`;
   }
 
   create(taskId: string): WorktreeInfo {

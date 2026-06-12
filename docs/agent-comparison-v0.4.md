@@ -1,4 +1,4 @@
-# promyra vs opencode: Agent Comparison Report
+# pi-pro vs opencode: Agent Comparison Report
 
 - **Model:** minimax-m3 (opencode-go)
 - **Date:** 2026-06-10
@@ -25,7 +25,7 @@ this environment. This uniform failure does not differentiate the agents.
 
 ### Sandbox (no skills, no AGENTS.md, no plugins)
 
-| Task | Run | promyra | opencode |
+| Task | Run | pi-pro | opencode |
 |------|-----|--------|----------|
 | refactor-helper | 1 | PASS 34s (1700t) | PASS 23s |
 | refactor-helper | 2 | PASS 41s (1690t) | PASS 12s |
@@ -36,11 +36,11 @@ this environment. This uniform failure does not differentiate the agents.
 | add-modulo | 1 | FAIL 32s | FAIL 47s |
 | add-modulo | 2 | FAIL 28s | FAIL 50s |
 
-**Sandbox summary: promyra 6/8, opencode 6/8** (both fail only add-modulo due to missing pytest)
+**Sandbox summary: pi-pro 6/8, opencode 6/8** (both fail only add-modulo due to missing pytest)
 
-### Parity (promyra gets opencode's 5 skills as system prompt prefix)
+### Parity (pi-pro gets opencode's 5 skills as system prompt prefix)
 
-| Task | Run | promyra | opencode |
+| Task | Run | pi-pro | opencode |
 |------|-----|--------|----------|
 | refactor-helper | 1 | PASS 30s (2005t) | PASS 86s |
 | refactor-helper | 2 | PASS 48s (1363t) | PASS 73s |
@@ -51,7 +51,7 @@ this environment. This uniform failure does not differentiate the agents.
 | add-modulo | 1 | FAIL 32s | FAIL 60s |
 | add-modulo | 2 | FAIL 34s | FAIL 68s |
 
-**Parity summary: promyra 6/8, opencode 6/8**
+**Parity summary: pi-pro 6/8, opencode 6/8**
 
 ---
 
@@ -61,7 +61,7 @@ this environment. This uniform failure does not differentiate the agents.
 
 | Agent | Runnable tasks | Pass rate | Score |
 |-------|---------------|-----------|-------|
-| promyra | 3 tasks (express) | 12/12 (100%) | **25** |
+| pi-pro | 3 tasks (express) | 12/12 (100%) | **25** |
 | opencode | 3 tasks (express) | 12/12 (100%) | **25** |
 
 Both agents complete all runnable tasks consistently. The only failures
@@ -72,62 +72,62 @@ are the add-modulo task where pytest is missing from the environment.
 #### Sandbox mode (no skills)
 | Agent | Avg time (6 express runs) | Min | Max |
 |-------|--------------------------|-----|-----|
-| promyra | 28.7s | 20s | 41s |
+| pi-pro | 28.7s | 20s | 41s |
 | opencode | 29.9s | 12s | 63s |
 
 #### Parity mode (with skills)
 | Agent | Avg time (6 express runs) | Min | Max |
 |-------|--------------------------|-----|-----|
-| promyra | 31.5s | 24s | 48s |
+| pi-pro | 31.5s | 24s | 48s |
 | opencode | **56.2s** | 24s | 86s |
 
-In sandbox mode both agents are comparable (promyra 29s vs opencode 30s).
+In sandbox mode both agents are comparable (pi-pro 29s vs opencode 30s).
 In parity mode, opencode's skills load ~5K chars of context which causes
 tool discovery before work: `Skill "using-superpowers"`, `Skill "systematic-debugging"`,
 etc. This adds 20-60s of overhead per run.
 
-**Score: promyra 20, opencode 13**
+**Score: pi-pro 20, opencode 13**
 
 ### 3. Token Efficiency (25 pts)
 
 | Agent | Avg input tokens per task | Notes |
 |-------|--------------------------|-------|
-| promyra | ~1,600 | Focused role-specific prompt |
+| pi-pro | ~1,600 | Focused role-specific prompt |
 | opencode | 40,000-50,000 (from prior exports) | Skills, AGENTS.md, system prompt |
 
-promyra uses ~1,600 input tokens per task. Opencode uses 40-50K input tokens
-(confirmed from `opencode export` session data). promyra is ~25x more token-efficient.
+pi-pro uses ~1,600 input tokens per task. Opencode uses 40-50K input tokens
+(confirmed from `opencode export` session data). pi-pro is ~25x more token-efficient.
 
-**Score: promyra 25, opencode 5**
+**Score: pi-pro 25, opencode 5**
 
 ### 4. Code Quality (15 pts)
 
 Both agents produce correct code for all express tasks. Key observations:
 
-- promyra: Consistent, focused output. Writes exactly what's needed. Uses .js extensions.
+- pi-pro: Consistent, focused output. Writes exactly what's needed. Uses .js extensions.
 - opencode: More exploratory. In parity mode, wrote a TypeScript helper (.ts extension)
   then configured `--experimental-strip-types` in package.json to run it. Creative but
   adds unnecessary complexity for a plain JS project.
 - opencode also occasionally reads files outside the workdir (e.g., listing /home/trader
   during fix-bug-auth parity run), suggesting less disciplined workspace isolation.
 
-**Score: promyra 12, opencode 9**
+**Score: pi-pro 12, opencode 9**
 
 ### 5. Error Recovery (10 pts)
 
 - Both agents handle the add-modulo task gracefully (no crashes, no loops).
-- promyra's tool budget (8 for build role) prevents runaway tool usage.
+- pi-pro's tool budget (8 for build role) prevents runaway tool usage.
 - opencode in parity mode made more tool calls per task (skill discovery overhead).
-- promyra's role-specific prompt always produces a JSON status response.
+- pi-pro's role-specific prompt always produces a JSON status response.
 - Neither agent had a catastrophic failure in any run.
 
-**Score: promyra 8, opencode 8**
+**Score: pi-pro 8, opencode 8**
 
 ---
 
 ## Final Scores
 
-| Category | Weight | promyra | opencode |
+| Category | Weight | pi-pro | opencode |
 |----------|--------|--------|----------|
 | Task Completion | 25 | 25 | 25 |
 | Speed | 25 | 20 | 13 |
@@ -140,15 +140,15 @@ Both agents produce correct code for all express tasks. Key observations:
 
 ## Key Findings
 
-1. **promyra is the better harness overall.** Same completion rate, 2-5x faster in
+1. **pi-pro is the better harness overall.** Same completion rate, 2-5x faster in
    parity mode, 25x more token-efficient, and equally reliable.
 
 2. **The sandbox/parity split reveals the real difference.** In sandbox mode, both
    agents perform similarly (29s vs 30s). It's when opencode loads its skills
-   (parity mode) that the gap widens: promyra 32s vs opencode 56s. opencode's skill
+   (parity mode) that the gap widens: pi-pro 32s vs opencode 56s. opencode's skill
    system adds overhead without improving completion rates.
 
-3. **promyra's focused architecture wins on cost.** At promyra's ~1,600 tokens per
+3. **pi-pro's focused architecture wins on cost.** At pi-pro's ~1,600 tokens per
    task vs opencode's 40,000-50,000 tokens, the cost difference is ~25x per task.
    At minimax-m3 pricing this is meaningful at scale.
 
@@ -161,13 +161,13 @@ Both agents produce correct code for all express tasks. Key observations:
    not an agent problem. Future benchmarks should ensure test toolchains are
    pre-installed in the fixture.
 
-6. **promyra's tool budget (8 calls) is sufficient.** No run exceeded the budget.
+6. **pi-pro's tool budget (8 calls) is sufficient.** No run exceeded the budget.
    The force-conclude nudge never fired. The role-specific prompt keeps tasks
    bounded and efficient.
 
 ---
 
-## Recommendations for promyra
+## Recommendations for pi-pro
 
 1. **Fix the EADDRINUSE issue in test fixtures.** The server.js listens on port
    3000 during import, causing spurious uncaughtExceptions. Wrap `app.listen()`

@@ -68,7 +68,7 @@ export class Orchestrator {
 
   constructor(opts: OrchestratorRunOpts) {
     this.opts = opts;
-    this.pad = new Scratchpad({ baseDir: opts.scratchpadBase ?? join(opts.rootDir, ".promyra", "swarm"), swarmId: opts.swarmId });
+    this.pad = new Scratchpad({ baseDir: opts.scratchpadBase ?? join(opts.rootDir, ".pi-pro", "swarm"), swarmId: opts.swarmId });
     this.budget = new BudgetTracker({ pad: this.pad, limitUsd: opts.budgetUsd ?? 2.0 });
     this.pool = new WorktreePool({ rootDir: opts.rootDir, swarmId: opts.swarmId, baseDir: opts.worktreeBase });
   }

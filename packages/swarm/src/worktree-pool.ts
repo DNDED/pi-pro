@@ -1,7 +1,7 @@
 /**
  * v0.6.0 WorktreePool.
  *
- * Manages per-role git worktrees under `.promyra/worktrees/<swarmId>/<role>/`.
+ * Manages per-role git worktrees under `.pi-pro/worktrees/<swarmId>/<role>/`.
  * Each worktree lives on its own branch `swarm/<swarmId>/<role>`. Builder
  * and test-runner get worktrees (write-capable roles that need isolation).
  * Planner/researcher/critic operate on cwd and don't use this pool.
@@ -22,7 +22,7 @@ import type { SwarmId, SwarmRole, WorktreeRef } from "./types.js";
 export interface WorktreePoolOpts {
   rootDir: string;
   swarmId: SwarmId;
-  /** Override the default worktree base. Default: <rootDir>/.promyra/worktrees */
+  /** Override the default worktree base. Default: <rootDir>/.pi-pro/worktrees */
   baseDir?: string;
 }
 
@@ -38,7 +38,7 @@ export class WorktreePool {
   constructor(opts: WorktreePoolOpts) {
     this.rootDir = opts.rootDir;
     this.swarmId = opts.swarmId;
-    this.baseDir = opts.baseDir ?? join(opts.rootDir, ".promyra", "worktrees");
+    this.baseDir = opts.baseDir ?? join(opts.rootDir, ".pi-pro", "worktrees");
   }
 
   /** Path to the worktree for the given role. */

@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/checkpoint",
+  "name": "@pi/checkpoint",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/store.js",

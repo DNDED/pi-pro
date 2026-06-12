@@ -12,7 +12,7 @@ const baseCtx: StepContext = {
   worktreePath: "/tmp/worktree-1",
 };
 
-describe("@promyra/subagent role prompts", () => {
+describe("@pi/subagent role prompts", () => {
   describe("build", () => {
     it("includes the description", () => {
       expect(buildPrompt(baseCtx)).toContain("Add /healthz endpoint");

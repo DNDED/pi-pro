@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "../theme.js";
-import type { SwarmState, SwarmRole, SubagentStatus, SwarmPauseReason } from "@promyra/swarm";
+import type { SwarmState, SwarmRole, SubagentStatus, SwarmPauseReason } from "@pi/swarm";
 
 export interface SwarmPanelProps {
   state: SwarmState | null;

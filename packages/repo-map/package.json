@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/repo-map",
+  "name": "@pi/repo-map",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
