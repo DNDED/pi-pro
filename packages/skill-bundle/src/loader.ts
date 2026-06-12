@@ -16,7 +16,7 @@ export interface Skill extends SkillMeta {
 
 const SKILLS_DIR = "skills";
 const PROMPT_FILE = "prompt.md";
-const GLOBAL_SKILLS_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "skills", "pi-pro");
+const GLOBAL_SKILLS_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "skills", "promyra");
 
 function packageRoot(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..");

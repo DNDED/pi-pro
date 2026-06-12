@@ -1,5 +1,5 @@
 {
-  "name": "@pi/memory",
+  "name": "@promyra/memory",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/session-memory.js",

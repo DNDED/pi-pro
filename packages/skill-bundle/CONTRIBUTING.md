@@ -1,11 +1,11 @@
-# Contributing to @pi/skill-bundle
+# Contributing to @promyra/skill-bundle
 
-Thank you for your interest in contributing to `@pi/skill-bundle`!
+Thank you for your interest in contributing to `@promyra/skill-bundle`!
 
 ## What is this package?
 
-`@pi/skill-bundle` is a curated collection of skills (prompt templates) for
-pi-pro, an AI coding agent. Each skill is a markdown file with YAML frontmatter
+`@promyra/skill-bundle` is a curated collection of skills (prompt templates) for
+promyra, an AI coding agent. Each skill is a markdown file with YAML frontmatter
 that defines a specific capability (e.g., code review, debugging, refactoring).
 
 ## How to contribute a new skill
@@ -62,4 +62,4 @@ pnpm coverage      # run tests with coverage report
 
 ## Questions?
 
-Open an issue on the pi-pro repository.
+Open an issue on the promyra repository.

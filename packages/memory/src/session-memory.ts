@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ContextEntry } from "./types.js";
 
-const MEMORY_FILE = ".pi-pro/memory.md";
+const MEMORY_FILE = ".promyra/memory.md";
 
 export class SessionMemory {
   constructor(private readonly rootDir: string = process.cwd()) {}

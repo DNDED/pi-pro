@@ -30,7 +30,7 @@ describe("skill-bundle loader", () => {
     });
 });
 async function mkFixture() {
-    const root = join(tmpdir(), `pi-pro-test-${Date.now()}`);
+    const root = join(tmpdir(), `promyra-test-${Date.now()}`);
     await mkdir(root, { recursive: true });
     await mkdir(join(root, "src"));
     await mkdir(join(root, "skills", "test-skill-a"), { recursive: true });

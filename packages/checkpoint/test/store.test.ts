@@ -16,7 +16,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("@pi/checkpoint", () => {
+describe("@promyra/checkpoint", () => {
   it("creates checkpoints with predictable ids", async () => {
     const taskId = store.newTaskId();
     const cp1 = await store.snapshot({ seq: 1, taskId, state: "intake", gitTreeSha: "abc1234", payload: { foo: 1 } });
@@ -46,7 +46,7 @@ describe("@pi/checkpoint", () => {
   it("writes session log lines", async () => {
     const taskId = store.newTaskId();
     await store.snapshot({ seq: 1, taskId, state: "intake", gitTreeSha: "abc1234", payload: {} });
-    const log = await readFile(join(dir, ".pi-pro/sessions", `${taskId}.jsonl`), "utf8");
+    const log = await readFile(join(dir, ".promyra/sessions", `${taskId}.jsonl`), "utf8");
     expect(log).toContain("\"state\":\"intake\"");
     expect(log).toContain("\"event\":\"checkpoint\"");
   });
@@ -90,7 +90,7 @@ describe("@pi/checkpoint", () => {
     const cp2 = await store.snapshot({ seq: 2, taskId, state: "plan", gitTreeSha: "def5678", payload: { i: 2 } });
     expect(cp1.id).toBe("chk_000001");
     expect(cp2.id).toBe("chk_000002");
-    const log = await readFile(join(dir, ".pi-pro/sessions", `${taskId}.jsonl`), "utf8");
+    const log = await readFile(join(dir, ".promyra/sessions", `${taskId}.jsonl`), "utf8");
     const lines = log.trim().split("\n");
     expect(lines).toHaveLength(2);
     expect(lines[0]).toContain("\"state\":\"intake\"");
