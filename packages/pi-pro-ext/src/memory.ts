@@ -104,6 +104,11 @@ export function listMemory(state: MemoryState): MemoryEntry[] {
   return [...state.entries].sort((a, b) => b.ts - a.ts);
 }
 
-export function clearMemory(state: MemoryState): MemoryState {
+export function clearMemory(state: MemoryState, path: string = getMemoryPath()): MemoryState {
+  try {
+    if (existsSync(path)) writeFileSync(path, "", "utf8");
+  } catch {
+    // best-effort
+  }
   return { entries: [], nextId: 1 };
 }

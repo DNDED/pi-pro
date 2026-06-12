@@ -101,3 +101,44 @@ describe("loadMemoryState", () => {
     expect(state.nextId).toBe(2);
   });
 });
+
+describe("clearMemory persistence", () => {
+  it("removes all entries from disk file", () => {
+    const path = join(tmpDir(), "mem.jsonl");
+    let state = loadMemoryState(path);
+    state = addMemory(state, "a", "fact", undefined, path).state;
+    state = addMemory(state, "b", "fact", undefined, path).state;
+    expect(loadMemoryState(path).entries.length).toBe(2);
+    const cleared = clearMemory(state, path);
+    expect(cleared.entries).toEqual([]);
+    expect(loadMemoryState(path).entries).toEqual([]);
+  });
+
+  it("no-op when file doesn't exist", () => {
+    const path = join(tmpDir(), "missing.jsonl");
+    const state = loadMemoryState(path);
+    const cleared = clearMemory(state, path);
+    expect(cleared.entries).toEqual([]);
+  });
+});
+
+describe("addMemory disk writes", () => {
+  it("writes entry to disk file", () => {
+    const path = join(tmpDir(), "mem.jsonl");
+    const state = loadMemoryState(path);
+    addMemory(state, "hello", "fact", undefined, path);
+    const onDisk = require("fs").readFileSync(path, "utf8").trim().split("\n");
+    expect(onDisk.length).toBe(1);
+    const entry = JSON.parse(onDisk[0]!);
+    expect(entry.text).toBe("hello");
+  });
+
+  it("appends across multiple calls", () => {
+    const path = join(tmpDir(), "mem.jsonl");
+    let state = loadMemoryState(path);
+    state = addMemory(state, "a", "fact", undefined, path).state;
+    state = addMemory(state, "b", "fact", undefined, path).state;
+    const reloaded = loadMemoryState(path);
+    expect(reloaded.entries.length).toBe(2);
+  });
+});

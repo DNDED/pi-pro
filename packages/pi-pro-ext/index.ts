@@ -19,7 +19,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { loadConfig, saveConfig, getDefaultModes, cycleMode as cycleModeCfg } from "@pi-pro/config";
 import { execSync } from "node:child_process";
-import { buildStarshipFooter, buildColoredFooter } from "./src/footer.js";
+import { buildColoredFooter } from "./src/footer.js";
 import { parsePlanItems, markPlanDone, renderPlanWidget, isSafeBash } from "./src/plan-widget.js";
 import { summarizeGitStatus } from "./src/util/git-status.js";
 import { detectRuntime, formatRuntime } from "./src/util/runtime-detect.js";
@@ -161,31 +161,34 @@ export default function (pi: ExtensionAPI): void {
     }
   }
 
-  function rebuildFooter(_ctx: unknown): void {
+  function rebuildFooter(_ctx: unknown): string {
     const cwd = process.cwd();
     const git = readGit(cwd);
     const runtime = detectRuntime(cwd);
     const nerdFonts = detectNerdFonts();
     const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
-    const mode = getCurrentModeName();
-    const isPlan = mode === "plan";
-    const line = buildStarshipFooter({
+    const modeName = getCurrentModeName();
+    const isPlan = modeName === "plan";
+    let cfg;
+    try { cfg = loadConfig(); } catch { cfg = null; }
+    const theme = getTheme(cfg?.theme?.name);
+    const useColor = shouldUseColor(readColorEnv(process.env, cfg));
+    const segs = buildColoredFooter({
       cwd,
       branch: git.branch,
       gitIcons: summary.icons,
       runtime: runtime ? formatRuntime(runtime).replace(/^via\s+/, "") : null,
-      mode,
+      mode: modeName,
       modeReadOnly: isPlan,
       nerdFonts,
+      version: "0.2.2",
+      gitState: summary.state,
     });
-    // Footer status is on ctx.ui (not pi).
-  }
-
-  function updateModeBadge(pi: ExtensionAPI, modeName: string): void {
-    // Try the common footer key. The exact ctx.ui.setStatus API requires `ctx`.
-    // The ExtensionAPI itself doesn't have setStatus, but ctx does.
-    // We capture ctx in handlers and call it there.
-    void pi;
+    return paintMany(
+      segs.map((s) => ({ text: s.text, color: s.color })),
+      theme,
+      useColor,
+    );
   }
 
   function useColorFor(_ctx: unknown): boolean {
@@ -610,6 +613,5 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  void updateModeBadge;
   void useColorFor;
 }
