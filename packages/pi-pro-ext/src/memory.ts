@@ -112,3 +112,22 @@ export function clearMemory(state: MemoryState, path: string = getMemoryPath()):
   }
   return { entries: [], nextId: 1 };
 }
+
+/** Convenience: read + list from the default memory path. */
+export function listMemoryState(): MemoryEntry[] {
+  return listMemory(loadMemoryState());
+}
+
+/** Convenience: append an entry to the default memory path. */
+export function addMemoryEntry(text: string, role: MemoryEntry["role"] = "narrative"): { state: MemoryState; entry: MemoryEntry } {
+  const state = loadMemoryState();
+  const result = addMemory(state, text, role);
+  return result;
+}
+
+/** Convenience: clear the default memory path; returns count cleared. */
+export function clearMemoryEntries(): number {
+  const before = listMemoryState().length;
+  clearMemory(loadMemoryState());
+  return before;
+}

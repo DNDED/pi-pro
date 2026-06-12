@@ -55,7 +55,7 @@ export function parsePlanItems(message: string): PlanItem[] {
   const numbered = /^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/gm;
   for (const m of planSection.matchAll(numbered)) {
     const raw = (m[2] ?? "").trim().replace(/\*{1,2}$/, "").trim();
-    if (raw.length > 1 && !raw.startsWith("`") && !raw.startsWith("/") && !raw.startsWith("-")) {
+    if (raw.length > 0 && !raw.startsWith("`") && !raw.startsWith("/") && !raw.startsWith("-")) {
       const cleaned = cleanStepText(raw);
       if (cleaned.length > 0) items.push({ step: items.length + 1, text: cleaned, completed: false });
     }
