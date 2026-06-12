@@ -109,12 +109,15 @@ export function formatStatusIcons(files: GitFile[], icons: GitStatusIcons = NERD
   return parts.join("");
 }
 
+export type GitState = "clean" | "modified" | "untracked" | "ahead" | "diverged" | "none";
+
 export interface GitStatusSummary {
   files: GitFile[];
   branch: string | null;
   ahead: number;
   behind: number;
   icons: string;
+  state: GitState;
 }
 
 export function summarizeGitStatus(
@@ -126,5 +129,19 @@ export function summarizeGitStatus(
 ): GitStatusSummary {
   const files = parsePorcelain(porcelainOutput);
   const icons = nerdFonts ? NERD_FONT_ICONS : ASCII_ICONS;
-  return { files, branch, ahead, behind, icons: formatStatusIcons(files, icons) };
+  let state: GitState = "none";
+  if (!branch) {
+    state = "none";
+  } else if (ahead > 0 && behind > 0) {
+    state = "diverged";
+  } else if (ahead > 0) {
+    state = "ahead";
+  } else if (files.some((f) => f.status === "untracked")) {
+    state = "untracked";
+  } else if (files.length > 0) {
+    state = "modified";
+  } else {
+    state = "clean";
+  }
+  return { files, branch, ahead, behind, icons: formatStatusIcons(files, icons), state };
 }

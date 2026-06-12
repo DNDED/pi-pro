@@ -94,3 +94,30 @@ describe("summarizeGitStatus", () => {
     expect(s.icons).toContain("!1");
   });
 });
+
+describe("git state classification", () => {
+  it("clean when no files", () => {
+    const s = summarizeGitStatus("", "main", 0, 0, false);
+    expect(s.state).toBe("clean");
+  });
+  it("modified when files but no untracked", () => {
+    const s = summarizeGitStatus(" M foo.ts", "main", 0, 0, false);
+    expect(s.state).toBe("modified");
+  });
+  it("untracked when any untracked", () => {
+    const s = summarizeGitStatus("?? foo.ts", "main", 0, 0, false);
+    expect(s.state).toBe("untracked");
+  });
+  it("ahead when ahead > 0 and no conflicts", () => {
+    const s = summarizeGitStatus("", "main", 2, 0, false);
+    expect(s.state).toBe("ahead");
+  });
+  it("diverged when both ahead and behind", () => {
+    const s = summarizeGitStatus("", "main", 2, 1, false);
+    expect(s.state).toBe("diverged");
+  });
+  it("none when no branch", () => {
+    const s = summarizeGitStatus(" M foo.ts", null, 0, 0, false);
+    expect(s.state).toBe("none");
+  });
+});

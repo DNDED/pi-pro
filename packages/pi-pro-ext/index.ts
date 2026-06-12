@@ -1,5 +1,5 @@
 /**
- * pi-pro v0.2.0 — extension for pi-mono.
+ * pi-pro v0.2.1 — extension for pi-mono.
  *
  * Loaded automatically by `pi` when registered in ~/.pi/agent/settings.json.
  * Provides:
@@ -7,9 +7,11 @@
  *   - Plan mode: DESTRUCTIVE_PATTERNS bash gate + read-only tool allowlist
  *   - Todo tool (LLM-callable, state in tool result details)
  *   - Memory: file-based JSONL store (add/search/list/clear)
- *   - Starship-style footer (cwd + branch + git icons + runtime)
- *   - Plan widget ([DONE:n] markers, setWidget aboveEditor)
- *   - REPL helpers: :mode, :plan, :todos, :config, :doctor, /btw, /context, /memory-*
+ *   - Starship-style footer (cwd + branch + git icons + runtime) — themed
+ *   - Plan widget ([DONE:n] markers, setWidget aboveEditor) — themed
+ *   - Theme system: default, vivid, monokai, noir
+ *   - REPL helpers: :mode, :plan, :todos, :config, :doctor, :theme,
+ *     /btw, /context, /memory-*
  *
  * Install: `pi install ./packages/pi-pro-ext`
  */
@@ -17,11 +19,19 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { loadConfig, saveConfig, getDefaultModes, cycleMode as cycleModeCfg } from "@pi-pro/config";
 import { execSync } from "node:child_process";
-import { buildStarshipFooter } from "./src/footer.js";
+import { buildStarshipFooter, buildColoredFooter } from "./src/footer.js";
 import { parsePlanItems, markPlanDone, renderPlanWidget, isSafeBash } from "./src/plan-widget.js";
-import { summarizeGitStatus, formatStatusIcons, parsePorcelain } from "./src/util/git-status.js";
+import { summarizeGitStatus } from "./src/util/git-status.js";
 import { detectRuntime, formatRuntime } from "./src/util/runtime-detect.js";
 import { detectNerdFonts } from "./src/util/nerd-fonts.js";
+import {
+  getTheme,
+  listThemes,
+  readColorEnv,
+  shouldUseColor,
+  paint,
+  paintMany,
+} from "./src/theme.js";
 import {
   addMemory,
   clearMemory,
@@ -72,11 +82,15 @@ function maskKey(k: string): string {
 
 function getEnvKey(provider: string): string | undefined {
   const map: Record<string, string> = {
-    "opencode-go": "OPENCODE_GO_API_KEY",
+    "opencode-go": "OPENCODE_API_KEY",
+    "opencode": "OPENCODE_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
-    "google": "GOOGLE_API_KEY",
+    "google": "GEMINI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "minimax": "MINIMAX_API_KEY",
   };
   return process.env[map[provider] ?? `${provider.toUpperCase()}_API_KEY`];
 }
@@ -174,6 +188,16 @@ export default function (pi: ExtensionAPI): void {
     void pi;
   }
 
+  function useColorFor(_ctx: unknown): boolean {
+    try {
+      const cfg = loadConfig();
+      const env = readColorEnv(process.env, cfg);
+      return shouldUseColor(env);
+    } catch {
+      return false;
+    }
+  }
+
   pi.on("session_start", async (_event, ctx) => {
     const modeName = getCurrentModeName();
     applyActiveTools(modeName);
@@ -184,7 +208,14 @@ export default function (pi: ExtensionAPI): void {
     const nerdFonts = detectNerdFonts();
     const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
     const isPlan = modeName === "plan";
-    const footer = buildStarshipFooter({
+
+    let cfg;
+    try { cfg = loadConfig(); } catch { cfg = null; }
+    const theme = getTheme(cfg?.theme?.name);
+    const env = readColorEnv(process.env, cfg);
+    const useColor = shouldUseColor(env);
+
+    const segs = buildColoredFooter({
       cwd,
       branch: git.branch,
       gitIcons: summary.icons,
@@ -192,14 +223,22 @@ export default function (pi: ExtensionAPI): void {
       mode: modeName,
       modeReadOnly: isPlan,
       nerdFonts,
+      version: "0.2.1",
+      gitState: summary.state,
     });
+    const footer = paintMany(
+      segs.map((s) => ({ text: s.text, color: s.color })),
+      theme,
+      useColor,
+    );
     try {
       (ctx.ui as { setStatus?: (k: string, t: string | undefined) => void }).setStatus?.("pi-pro-footer", footer);
     } catch {
       // ignore
     }
     if (ctx.hasUI) {
-      ctx.ui.notify(`pi-pro v0.2.0 · ${modeName}${isPlan ? " (read-only)" : ""}`, "info");
+      const note = `pi-pro v0.2.1 · ${modeName}${isPlan ? " (read-only)" : ""} · ${theme.name}`;
+      ctx.ui.notify(useColor ? paint(note, "accent", theme, true) : note, "info");
     }
   });
 
@@ -350,10 +389,15 @@ export default function (pi: ExtensionAPI): void {
       try {
         const cfg = loadConfig();
         const key = getEnvKey(cfg.provider.name);
+        const theme = getTheme(cfg.theme?.name);
+        const env = readColorEnv(process.env, cfg);
+        const useColor = shouldUseColor(env);
         lines.push(`  provider:  ${cfg.provider.name}`);
         lines.push(`  model:     ${cfg.provider.model}`);
         lines.push(`  api key:   ${key ? `✓ ${maskKey(key)}` : "✗ (no key in env)"}`);
         lines.push(`  mode:      ${cfg.agent.name}${cfg.agent.name === "plan" ? " (read-only)" : ""}`);
+        lines.push(`  theme:     ${theme.name} (${theme.label})`);
+        lines.push(`  color:     ${useColor ? "✓ on" : "✗ off"} ${env.noColor ? "(NO_COLOR)" : env.termDumb ? "(TERM=dumb)" : env.copyFriendly ? "(copyFriendly)" : ""}`);
         lines.push(`  cwd:       ${process.cwd()}`);
         const git = readGit(process.cwd());
         if (git.branch) {
@@ -366,6 +410,35 @@ export default function (pi: ExtensionAPI): void {
         lines.push(`  error: ${(e as Error).message}`);
       }
       ctx.ui.notify(lines.join("\n"), "info");
+    },
+  });
+
+  pi.registerCommand("theme", {
+    description: "Show / set theme (default, vivid, monokai, noir)",
+    handler: async (args, ctx) => {
+      const arg = args?.trim();
+      if (!arg) {
+        const cfg = loadConfig();
+        const current = getTheme(cfg.theme?.name);
+        for (const t of listThemes()) {
+          const marker = t.name === current.name ? "→" : " ";
+          const note = useColorFor(ctx)
+            ? paint(`${marker} ${t.name}`, t.name === current.name ? "success" : "muted", t, true)
+            : `${marker} ${t.name}`;
+          ctx.ui.notify(`${note}  ${t.label} — ${t.description}`, "info");
+        }
+        return;
+      }
+      const target = listThemes().find((t) => t.name === arg);
+      if (!target) {
+        const names = listThemes().map((t) => t.name).join(", ");
+        ctx.ui.notify(`unknown theme: ${arg} (available: ${names})`, "error");
+        return;
+      }
+      const cfg = loadConfig();
+      cfg.theme = { name: target.name };
+      saveConfig(cfg);
+      ctx.ui.notify(`theme: → ${target.name} (${target.label})`, "info");
     },
   });
 
@@ -538,7 +611,5 @@ export default function (pi: ExtensionAPI): void {
   });
 
   void updateModeBadge;
-  void rebuildFooter;
-  void parsePorcelain;
-  void formatStatusIcons;
+  void useColorFor;
 }
