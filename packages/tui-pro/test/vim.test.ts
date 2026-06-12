@@ -157,7 +157,7 @@ describe("wordEndN", () => {
 
 describe("pushUndo", () => {
   it("pushes current state", () => {
-    const s = { text: "abc", cursor: 1, anchor: 1, mode: "insert" as const, pendingOp: "none" as const, pendingCount: 0, undoStack: [] };
+    const s = { text: "abc", cursor: 1, anchor: 1, mode: "insert" as const, pendingOp: "none" as const, pendingCount: 0, undoStack: [], exBuf: "", lastExCommand: { kind: "none" as const, raw: "", bang: false } };
     const next = pushUndo(s);
     expect(next.undoStack).toHaveLength(1);
     expect(next.undoStack[0]).toEqual({ text: "abc", cursor: 1 });

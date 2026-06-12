@@ -2,6 +2,9 @@ import {
   type VimState,
   type VimResult,
   type OpKind,
+  type ExCommand,
+  parseEx,
+  applyEx,
   pushUndo,
   applyDelete,
   applyLineDelete,
@@ -34,6 +37,8 @@ export const INITIAL_RUNTIME: VimRuntime = {
     pendingOp: "none",
     pendingCount: 0,
     undoStack: [],
+    exBuf: "",
+    lastExCommand: { kind: "none", raw: "", bang: false },
   },
   yank: null,
 };
@@ -315,7 +320,10 @@ export function handleNormalKey(input: string, key: Record<string, boolean>, run
       return { state: { ...runtime.state, mode: "visual", anchor: lineStart_, cursor: lineEnd_, pendingOp: "none", pendingCount: 0 }, yank: runtime.yank };
     }
     case "escape": {
-      return { state: { ...runtime.state, mode: "normal", pendingOp: "none", pendingCount: 0 }, yank: runtime.yank };
+      return { state: { ...runtime.state, mode: "normal", pendingOp: "none", pendingCount: 0, exBuf: "" }, yank: runtime.yank };
+    }
+    case ":": {
+      return { state: { ...runtime.state, mode: "ex", pendingOp: "none", pendingCount: 0, exBuf: ":" }, yank: runtime.yank };
     }
   }
 
@@ -568,9 +576,52 @@ export function handleVisualKey(input: string, key: Record<string, boolean>, run
   return runtime;
 }
 
+export function handleExKey(input: string, key: Record<string, boolean>, runtime: VimRuntime): VimRuntime {
+  if (key.escape) {
+    return {
+      state: { ...runtime.state, mode: "normal", exBuf: "", pendingOp: "none", pendingCount: 0 },
+      yank: runtime.yank,
+    };
+  }
+  if (key.backspace || key.delete) {
+    if (runtime.state.exBuf.length > 1) {
+      return {
+        state: { ...runtime.state, exBuf: runtime.state.exBuf.slice(0, -1) },
+        yank: runtime.yank,
+      };
+    }
+    return {
+      state: { ...runtime.state, mode: "normal", exBuf: "", pendingOp: "none", pendingCount: 0 },
+      yank: runtime.yank,
+    };
+  }
+  if (key.return) {
+    const command = parseEx(runtime.state.exBuf);
+    if (command.kind === "none") {
+      return {
+        state: { ...runtime.state, mode: "normal", exBuf: "", pendingOp: "none", pendingCount: 0, lastExCommand: command },
+        yank: runtime.yank,
+      };
+    }
+    const result = applyEx(runtime.state, command);
+    return {
+      state: { ...result.state, mode: result.state.mode === "ex" ? "normal" : result.state.mode, exBuf: "", pendingOp: "none", pendingCount: 0, lastExCommand: command },
+      yank: runtime.yank,
+    };
+  }
+  if (input && !key.ctrl && !key.meta) {
+    return {
+      state: { ...runtime.state, exBuf: runtime.state.exBuf + input },
+      yank: runtime.yank,
+    };
+  }
+  return runtime;
+}
+
 export function handleKey(input: string, key: Record<string, boolean>, runtime: VimRuntime): VimRuntime {
   if (runtime.state.mode === "insert") return handleInsertKey(input, key, runtime);
   if (runtime.state.mode === "visual") return handleVisualKey(input, key, runtime);
+  if (runtime.state.mode === "ex") return handleExKey(input, key, runtime);
   return handleNormalKey(input, key, runtime);
 }
 

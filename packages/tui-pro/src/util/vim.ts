@@ -1,5 +1,12 @@
-export type VimMode = "insert" | "normal" | "visual";
+export type VimMode = "insert" | "normal" | "visual" | "ex";
 export type OpKind = "none" | "delete" | "change" | "yank";
+export type ExCommandKind = "none" | "write" | "quit" | "write-quit" | "force-quit" | "clear" | "help";
+
+export interface ExCommand {
+  kind: ExCommandKind;
+  raw: string;
+  bang: boolean;
+}
 
 export interface VimState {
   text: string;
@@ -12,6 +19,10 @@ export interface VimState {
   pendingCount: number;
   /** Undo stack: snapshots before each change. */
   undoStack: Array<{ text: string; cursor: number }>;
+  /** Ex mode buffer (text being typed for :command). */
+  exBuf: string;
+  /** Last parsed ex command (set after enter in ex mode). */
+  lastExCommand: ExCommand;
 }
 
 export const INITIAL_VIM: VimState = {
@@ -22,6 +33,8 @@ export const INITIAL_VIM: VimState = {
   pendingOp: "none",
   pendingCount: 0,
   undoStack: [],
+  exBuf: "",
+  lastExCommand: { kind: "none", raw: "", bang: false },
 };
 
 export interface VimResult {
@@ -188,4 +201,47 @@ export function clampCursor(text: string, cursor: number): number {
   if (cursor < 0) return 0;
   if (cursor > text.length) return text.length;
   return cursor;
+}
+
+const EX_NONE: ExCommand = { kind: "none", raw: "", bang: false };
+
+export function parseEx(input: string): ExCommand {
+  const raw = input;
+  if (raw === "" || raw === ":") return EX_NONE;
+  const body = raw.startsWith(":") ? raw.slice(1) : raw;
+  const bodyTrimmed = body.trim();
+  if (bodyTrimmed === "q!") return { kind: "force-quit", raw, bang: true };
+  const cmd = bodyTrimmed.endsWith("!") ? bodyTrimmed.slice(0, -1) : bodyTrimmed;
+  if (cmd === "w" || cmd === "write") return { kind: "write", raw, bang: false };
+  if (cmd === "q" || cmd === "quit") return { kind: "quit", raw, bang: false };
+  if (cmd === "wq" || cmd === "x") return { kind: "write-quit", raw, bang: false };
+  if (cmd === "clear" || cmd === "cls") return { kind: "clear", raw, bang: false };
+  if (cmd === "help" || cmd === "h" || cmd === "?") return { kind: "help", raw, bang: false };
+  return EX_NONE;
+}
+
+export interface ExApplyResult {
+  state: VimState;
+  command: ExCommand;
+}
+
+export function applyEx(state: VimState, command: ExCommand): ExApplyResult {
+  if (command.kind === "none") {
+    return { state, command };
+  }
+  if (command.kind === "clear") {
+    const newState: VimState = {
+      ...state,
+      text: "",
+      cursor: 0,
+      mode: "insert",
+      pendingOp: "none",
+      pendingCount: 0,
+      undoStack: [],
+      exBuf: "",
+      lastExCommand: command,
+    };
+    return { state: newState, command };
+  }
+  return { state, command };
 }
